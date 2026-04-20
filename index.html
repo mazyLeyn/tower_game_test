@@ -3,352 +3,336 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Stack Builder</title>
+<title>Stack Builder - Deluxe</title>
+
 <style>
-/* (CSS AYNEN KALDI) */
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #0a0a0f;
-  --surface: #12121a;
-  --accent: #e0ff4f;
-  --text: #f0f0f8;
-  --muted: #4a4a6a;
-  --danger: #ff4f6e;
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  --bg:#07070c;
+  --accent:#e0ff4f;
 }
-html, body {
-  width: 100%; height: 100%;
-  overflow: hidden;
-  background: var(--bg);
-  font-family: 'Space Mono', monospace;
-  color: var(--text);
-  touch-action: none;
-  user-select: none;
+
+body{
+  overflow:hidden;
+  background:var(--bg);
+  font-family:'Space Mono';
+  touch-action:none;
+  user-select:none;
 }
-/* ... (CSSİN GERİ KALANI AYNI) ... */
+
+#canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+
+/* HUD unchanged visually */
+#hud{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;padding:20px;color:#fff}
+#score-label{font-size:80px;color:var(--accent);font-family:'Bebas Neue'}
+#best-label{font-size:12px;opacity:.6}
+
+/* screens unchanged */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.8);z-index:100}
+.hidden{display:none}
+
+.btn{padding:12px 30px;background:var(--accent);border:none;font-weight:bold;cursor:pointer}
 </style>
 </head>
+
 <body>
-<div id="app">
 
-  <!-- HUD -->
-  <div id="hud">
-    <div id="score-label">0</div>
-    <div id="best-label">BEST<span id="best-val">0</span></div>
-  </div>
+<canvas id="canvas"></canvas>
 
-  <canvas id="canvas"></canvas>
-  <div id="perfect-flash">PERFECT</div>
-  <div id="speed-badge">⚡ Speed Up!</div>
-
-  <div class="screen" id="start-screen">
-    <div class="screen-title">STACK<br>BUILDER</div>
-    <button class="btn" id="start-btn">START GAME</button>
-  </div>
-
-  <div class="screen hidden" id="gameover-screen">
-    <div class="screen-title">GAME<br>OVER</div>
-    <div id="gameover-score">SCORE — 0</div>
-    <button class="btn" id="restart-btn">TRY AGAIN</button>
-  </div>
-
+<div id="hud">
+  <div id="score-label">0</div>
+  <div id="best-label">BEST <span id="best-val">0</span></div>
 </div>
 
-<!-- 🎵 MÜZİK -->
-<audio id="bg-music" src="gravity_letting_go.mp3" loop></audio>
+<div id="start-screen" class="screen">
+  <h1 style="color:#e0ff4f">STACK BUILDER</h1>
+  <button id="start-btn" class="btn">START</button>
+</div>
 
 <script>
 (() => {
 
-/* ───────── CONFIG ───────── */
-const CONFIG = {
-  blockHeight: 40,
-  baseWidth: 260,
-  speed: 2.2,
-  ease: 0.05,
-  gravity: 0.6,
-  perfectThreshold: 6,
-};
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-/* ───────── STATE ───────── */
-let stack = [];
-let fallingPieces = [];
-let current;
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+// ───────── CORE STATE ─────────
+let blocks = [];
+let moving = null;
+let particles = [];
+let debris = [];
+
 let score = 0;
 let combo = 0;
-let hue = 140;
+let best = 0;
 
 let cameraY = 0;
-let targetCameraY = 0;
+let camVel = 0;
 let shake = 0;
 
-let running = false;
-let anim;
+const BLOCK_H = 28;
+const BASE_SPEED = 2.8;
+const PERFECT_TOL = 4;
 
-/* ───────── DOM ───────── */
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('score-label');
-const startScreen = document.getElementById('start-screen');
-const goScreen = document.getElementById('gameover-screen');
-const goScore = document.getElementById('gameover-score');
+let hue = 160;
 
-/* ───────── AUDIO ───────── */
-const music = document.getElementById('bg-music');
-let audioCtx = null;
-let source = null;
-let analyser = null;
-let lowPass = null;
-let dataArray = null;
+// ───────── INPUT ─────────
+window.addEventListener("keydown", e=>{
+  if(e.code==="Space") place();
+});
+canvas.addEventListener("pointerdown", place);
 
-function initAudio() {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// ───────── INIT ─────────
+function init(){
+  blocks=[];
+  particles=[];
+  debris=[];
+  score=0;
+  combo=0;
 
-  source = audioCtx.createMediaElementSource(music);
+  const base = {
+    x: canvas.width/2 - 120,
+    w: 240,
+    y: 0,
+    color: 160
+  };
 
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 64;
-
-  lowPass = audioCtx.createBiquadFilter();
-  lowPass.type = "lowpass";
-  lowPass.frequency.value = 20000;
-
-  source.connect(analyser);
-  analyser.connect(lowPass);
-  lowPass.connect(audioCtx.destination);
-
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  blocks.push(base);
+  spawn();
 }
 
-/* NOTE SYNTH */
-function playNote(i) {
-  if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.frequency.value = 220 + i * 20;
-  osc.type = "sine";
-
-  gain.gain.value = 0.1;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.1);
+function spawn(){
+  const last = blocks[blocks.length-1];
+  moving = {
+    x: Math.random()<0.5 ? -200 : canvas.width+200,
+    w: last.w,
+    y: last.y - BLOCK_H,
+    dir: Math.random()<0.5 ? 1 : -1,
+    color: hue+=18
+  };
 }
 
-/* ───────── RESIZE ───────── */
-function resize() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-}
-resize();
-addEventListener('resize', resize);
+// ───────── PLACE BLOCK ─────────
+function place(){
+  const last = blocks[blocks.length-1];
 
-/* ───────── BLOCK CLASS ───────── */
-class Block {
-  constructor(x, y, w) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.targetX = x;
-  }
+  const overlapStart = Math.max(moving.x, last.x);
+  const overlapEnd = Math.min(moving.x+moving.w, last.x+last.w);
+  const overlap = overlapEnd - overlapStart;
 
-  update() {
-    this.x += (this.targetX - this.x) * CONFIG.ease;
-  }
-
-  draw(pulse = 1) {
-    ctx.fillStyle = `hsl(${hue}, 80%, ${50 + pulse*10}%)`;
-    ctx.fillRect(this.x, this.y - cameraY, this.w, CONFIG.blockHeight);
-  }
-}
-
-/* ───────── INIT ───────── */
-function init() {
-  stack = [];
-  fallingPieces = [];
-  score = 0;
-  combo = 0;
-
-  const base = new Block(
-    canvas.width/2 - CONFIG.baseWidth/2,
-    canvas.height - 100,
-    CONFIG.baseWidth
-  );
-
-  stack.push(base);
-
-  spawnBlock();
-}
-
-/* ───────── SPAWN ───────── */
-function spawnBlock() {
-  const last = stack[stack.length-1];
-
-  current = new Block(-300, last.y - CONFIG.blockHeight, last.w);
-  current.targetX = canvas.width;
-}
-
-/* ───────── PLACE ───────── */
-function place() {
-  const last = stack[stack.length-1];
-
-  const diff = current.x - last.x;
-  const overlap = last.w - Math.abs(diff);
-
-  if (overlap <= 0) {
-    endGame();
+  if(overlap<=0){
+    gameOver();
     return;
   }
 
-  /* PERFECT */
-  if (Math.abs(diff) < CONFIG.perfectThreshold) {
-    current.x = last.x;
+  const diff = Math.abs(moving.x - last.x);
+
+  // PERFECT
+  if(diff < PERFECT_TOL){
+    moving.x = last.x;
     combo++;
-    current.w += 4;
-    flash();
+    shake += 6;
+    spawnShock(moving.x, moving.y);
+    spawnParticles(moving);
   } else {
     combo = 0;
+
+    // SPLIT DEBRIS
+    spawnDebris(moving, last);
+    moving.w = overlap;
+    moving.x = overlapStart;
   }
 
-  /* SLICE */
-  const cut = current.w - overlap;
-  if (cut > 0) {
-    const piece = {
-      x: diff > 0 ? current.x + overlap : current.x,
-      y: current.y,
-      w: cut,
-      vy: 0
-    };
-    fallingPieces.push(piece);
-  }
+  blocks.push({...moving});
 
-  current.w = overlap;
-  current.x = diff > 0 ? last.x : last.x + (last.w - overlap);
-
-  stack.push(current);
-
-  /* SCORE */
   score++;
-  scoreEl.textContent = score;
+  document.getElementById("score-label").innerText = score;
 
-  /* CAMERA */
-  targetCameraY += CONFIG.blockHeight;
-
-  /* COLOR SHIFT */
-  hue += 8;
-
-  /* SOUND */
-  playNote(score);
-
-  spawnBlock();
+  spawn();
 }
 
-/* ───────── EFFECTS ───────── */
-function flash() {
-  const el = document.getElementById('perfect-flash');
-  el.style.opacity = 1;
-  setTimeout(()=> el.style.opacity = 0, 100);
+// ───────── VFX SYSTEM ─────────
+function spawnParticles(b){
+  for(let i=0;i<18;i++){
+    particles.push({
+      x:b.x + Math.random()*b.w,
+      y:b.y,
+      vx:(Math.random()-0.5)*4,
+      vy:(Math.random()-1)*6,
+      life:1,
+      hue:b.color
+    });
+  }
 }
 
-/* ───────── UPDATE ───────── */
-function update() {
-  if (!running) return;
-  let bass = 0;
+function spawnShock(x,y){
+  particles.push({shock:true,x,y,r:10,life:1});
+}
 
-  if (analyser && dataArray) {
-    analyser.getByteFrequencyData(dataArray);
-    bass = dataArray[1] / 255;
+function spawnDebris(m,last){
+  const left = m.x < last.x ? m.x : last.x;
+  const right = m.x + m.w > last.x + last.w ? m.x+m.w : last.x+last.w;
+
+  if(m.x < last.x){
+    debris.push(makePiece(m.x, m.y, last.x - m.x, m.color, -3));
+  }
+  if(m.x+m.w > last.x+last.w){
+    debris.push(makePiece(last.x+last.w, m.y, (m.x+m.w)-(last.x+last.w), m.color, 3));
+  }
+}
+
+function makePiece(x,y,w,color,vx){
+  return {
+    x,y,w,h:BLOCK_H,
+    vx,
+    vy:-2,
+    rot:0,
+    vr:(Math.random()-0.5)*0.2,
+    color
+  };
+}
+
+// ───────── UPDATE ─────────
+function update(){
+  // camera spring
+  const target = -score*BLOCK_H + canvas.height*0.6;
+  camVel += (target - cameraY)*0.08;
+  camVel *= 0.7;
+  cameraY += camVel;
+
+  shake *= 0.85;
+
+  if(moving){
+    moving.x += moving.dir * BASE_SPEED;
+    if(moving.x>canvas.width+100) moving.dir=-1;
+    if(moving.x<-200) moving.dir=1;
   }
 
-  /* CAMERA LERP */
-  cameraY += (targetCameraY - cameraY) * 0.1;
-
-  /* SHAKE */
-  const shakeX = (Math.random()-0.5) * shake;
-  const shakeY = (Math.random()-0.5) * shake;
-  ctx.setTransform(1,0,0,1,shakeX,shakeY);
-  shake *= 0.9;
-
-  /* MOVE CURRENT */
-  if (current) {
-    current.targetX = Math.sin(Date.now()*0.002) * (canvas.width/2) + canvas.width/2;
-    current.update();
-  }
-
-  /* FALLING */
-  fallingPieces.forEach(p=>{
-    p.vy += CONFIG.gravity;
-    p.y += p.vy;
+  // particles
+  particles.forEach(p=>{
+    if(p.shock){
+      p.r += 8;
+      p.life -= 0.05;
+    } else {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.2;
+      p.life -= 0.03;
+    }
   });
+  particles = particles.filter(p=>p.life>0);
 
-  /* DRAW */
-  ctx.fillStyle = `hsl(${hue}, 30%, ${8 + bass*10}%)`;
+  // debris physics
+  debris.forEach(d=>{
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vy += 0.3;
+    d.rot += d.vr;
+  });
+}
+
+// ───────── DRAW ─────────
+function draw(){
+  ctx.fillStyle="#07070c";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  stack.forEach(b=>b.draw(bass));
-  if (current) current.draw(bass);
+  ctx.save();
+  ctx.translate(0, shake*(Math.random()-0.5));
 
-  fallingPieces.forEach(p=>{
-    ctx.fillStyle = "#ff4f6e";
-    ctx.fillRect(p.x, p.y - cameraY, p.w, CONFIG.blockHeight);
+  // GRID PARALLAX
+  ctx.globalAlpha=0.08;
+  ctx.strokeStyle="#e0ff4f";
+  for(let y=0;y<canvas.height;y+=50){
+    ctx.beginPath();
+    ctx.moveTo(0,y + cameraY*0.2%50);
+    ctx.lineTo(canvas.width,y + cameraY*0.2%50);
+    ctx.stroke();
+  }
+
+  // BLOCKS
+  blocks.forEach(b=>{
+    const y = b.y - cameraY;
+
+    ctx.shadowBlur = combo>3 ? 25 : 10;
+    ctx.shadowColor = `hsl(${b.color},100%,60%)`;
+
+    const g = ctx.createLinearGradient(b.x,y,b.x+b.w,y+BLOCK_H);
+    g.addColorStop(0,`hsl(${b.color},90%,65%)`);
+    g.addColorStop(1,`hsl(${b.color+40},70%,40%)`);
+
+    ctx.fillStyle=g;
+    ctx.fillRect(b.x,y,b.w,BLOCK_H);
+
+    ctx.shadowBlur=0;
   });
+
+  // MOVING
+  if(moving){
+    const y = moving.y - cameraY;
+    ctx.fillStyle=`hsl(${moving.color},80%,60%)`;
+    ctx.fillRect(moving.x,y,moving.w,BLOCK_H);
+  }
+
+  // DEBRIS
+  debris.forEach(d=>{
+    const y = d.y - cameraY;
+    ctx.save();
+    ctx.translate(d.x,y);
+    ctx.rotate(d.rot);
+    ctx.fillStyle=`hsl(${d.color},80%,55%)`;
+    ctx.fillRect(0,0,d.w,d.h);
+    ctx.restore();
+  });
+
+  // PARTICLES
+  particles.forEach(p=>{
+    if(p.shock){
+      ctx.strokeStyle=`rgba(224,255,79,${p.life})`;
+      ctx.beginPath();
+      ctx.arc(p.x-cameraY*0.1,p.y,p.r,0,Math.PI*2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle=`hsla(${p.hue},100%,60%,${p.life})`;
+      ctx.fillRect(p.x,p.y,3,3);
+    }
+  });
+
+  ctx.restore();
 }
 
-/* ───────── LOOP ───────── */
-function loop() {
+// ───────── LOOP ─────────
+function loop(){
   update();
-  anim = requestAnimationFrame(loop);
+  draw();
+  requestAnimationFrame(loop);
 }
 
-/* ───────── GAME OVER ───────── */
-function endGame() {
-  if (lowPass && audioCtx) {
-  lowPass.frequency.setTargetAtTime(200, audioCtx.currentTime, 0.05);
-}
-  running = false;
-
-  shake = 20;
-
-  goScreen.classList.remove('hidden');
-  goScore.textContent = `SCORE — ${score}`;
-}
-
-
-/* ───────── START ───────── */
-function start() {
-  startScreen.classList.add('hidden');
-  goScreen.classList.add('hidden');
-
+// ───────── GAME OVER ─────────
+function gameOver(){
+  alert("Game Over: "+score);
   init();
-
-  // 🔥 SADECE BURADA OLUŞTUR
-  if (!audioCtx) initAudio();
-
-  audioCtx.resume();
-
-  music.currentTime = 0;
-  music.play();
-
-  // normal ses
-  lowPass.frequency.setTargetAtTime(20000, audioCtx.currentTime, 0.1);
-
-  running = true;
-  loop();
 }
 
-/* ───────── INPUT ───────── */
-canvas.addEventListener('pointerdown', () => {
-  if (running) place();
-});
+// start
+document.getElementById("start-btn").onclick=()=>{
+  document.getElementById("start-screen").style.display="none";
+  init();
+};
 
-/* ───────── BUTTONS ───────── */
-document.getElementById('start-btn').onclick = start;
-document.getElementById('restart-btn').onclick = start;
+loop();
 
 })();
 </script>
+
 </body>
 </html>
