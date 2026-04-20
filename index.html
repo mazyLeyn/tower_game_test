@@ -315,67 +315,61 @@
   }
 
   // ── BLOCK VISUALS ────────────────────────────────────────────────
-  function blockGradient(h, x, y, w, ht, glowMult = 1) {
-    const g = ctx.createLinearGradient(x, y, x + w, y + ht);
-    const l1 = 68 + comboCount * 3;
-    const s1 = 72 + comboCount * 2;
-    g.addColorStop(0,   `hsl(${h % 360}, ${Math.min(s1,95)}%, ${Math.min(l1,80)}%)`);
-    g.addColorStop(0.4, `hsl(${(h+15) % 360}, ${Math.min(s1-5,90)}%, ${Math.min(l1-8,72)}%)`);
-    g.addColorStop(1,   `hsl(${(h+35) % 360}, 65%, ${Math.max(l1-20,44)}%)`);
+  // Gradient cache: key = "h_w" → reuse across frames for same block
+  const _gradCache = new Map();
+  function blockGradient(h, x, y, w) {
+    // Gradients are position-dependent in Canvas, so we use a 0-based
+    // gradient and apply it via pattern trick — instead, just create
+    // a simple top→bottom gradient once per unique (h,w) combo.
+    // We re-create only when the cache would grow stale (hue changes per block).
+    const key = `${h % 360}_${Math.round(w)}`;
+    if (_gradCache.has(key)) return _gradCache.get(key);
+    const l1 = 68, s1 = 72;
+    // Use a 0,0 → 0,BLOCK_H gradient (position-independent direction)
+    const g = ctx.createLinearGradient(0, 0, 0, BLOCK_H);
+    g.addColorStop(0,   `hsl(${h % 360}, ${s1}%, ${l1}%)`);
+    g.addColorStop(0.4, `hsl(${(h+15) % 360}, ${s1-5}%, ${l1-8}%)`);
+    g.addColorStop(1,   `hsl(${(h+35) % 360}, 65%, ${l1-20}%)`);
+    if (_gradCache.size > 80) _gradCache.clear(); // prevent unbounded growth
+    _gradCache.set(key, g);
     return g;
   }
 
-  function drawBlock(b, alpha = 1, extraGlow = 0) {
+  function drawBlock(b, alpha = 1, isTop = false) {
     const screenY = b.y - cameraY + screenShake.y;
     const screenX = b.x + screenShake.x;
     if (screenY > canvas.height + 60 || screenY < -80) return;
 
-    const glowIntensity = 8 + comboCount * 4 + extraGlow;
-    const glowColor = `hsla(${b.color % 360}, 80%, 65%, ${Math.min(0.85, 0.4 + comboCount * 0.08)})`;
-
     ctx.save();
     ctx.globalAlpha = alpha;
+    ctx.translate(screenX, screenY);
 
-    // Neon glow layers
-    ctx.shadowColor  = glowColor;
-    ctx.shadowBlur   = glowIntensity;
-    ctx.fillStyle    = blockGradient(b.color, screenX, screenY, b.w, BLOCK_H);
-    ctx.beginPath();
-    ctx.roundRect(screenX, screenY, b.w, BLOCK_H, 4);
-    ctx.fill();
-
-    // Second glow pass for depth
-    if (comboCount >= 2) {
-      ctx.shadowBlur  = glowIntensity * 2.2;
-      ctx.shadowColor = `hsla(${(b.color + 30) % 360}, 90%, 70%, 0.3)`;
-      ctx.fill();
+    // Neon glow — only on top block and only when needed (expensive)
+    if (isTop || comboCount >= 3) {
+      const glowIntensity = isTop ? 10 + comboCount * 3 : 6;
+      ctx.shadowColor = `hsl(${b.color % 360}, 80%, 65%)`;
+      ctx.shadowBlur  = glowIntensity;
     }
+
+    ctx.fillStyle = blockGradient(b.color, 0, 0, b.w);
+    ctx.beginPath();
+    ctx.roundRect(0, 0, b.w, BLOCK_H, 4);
+    ctx.fill();
 
     ctx.shadowBlur = 0;
 
-    // Glassmorphic top sheen
-    const sheen = ctx.createLinearGradient(screenX, screenY, screenX, screenY + BLOCK_H * 0.55);
-    sheen.addColorStop(0,   'rgba(255,255,255,0.28)');
-    sheen.addColorStop(0.5, 'rgba(255,255,255,0.06)');
-    sheen.addColorStop(1,   'rgba(255,255,255,0)');
-    ctx.fillStyle = sheen;
+    // Glassmorphic top sheen — static gradient (no position needed)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.beginPath();
-    ctx.roundRect(screenX + 2, screenY + 2, b.w - 4, BLOCK_H - 4, 3);
+    ctx.roundRect(2, 2, b.w - 4, BLOCK_H * 0.45, 3);
     ctx.fill();
 
     // Edge rim light
-    ctx.strokeStyle = `hsla(${b.color % 360}, 80%, 80%, 0.25)`;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(screenX + 0.5, screenY + 0.5, b.w - 1, BLOCK_H - 1, 4);
+    ctx.roundRect(0.5, 0.5, b.w - 1, BLOCK_H - 1, 4);
     ctx.stroke();
-
-    // Bottom shadow stripe
-    ctx.globalAlpha = alpha * 0.22;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.roundRect(screenX + 3, screenY + BLOCK_H - 6, b.w - 6, 4, 2);
-    ctx.fill();
 
     ctx.restore();
   }
@@ -385,11 +379,11 @@
     const screenY = moving.y - cameraY + screenShake.y;
     const screenX = moving.x + screenShake.x;
 
-    // Predict line
+    // Predict line — single path
     ctx.save();
-    ctx.strokeStyle = `hsla(${moving.color}, 70%, 60%, 0.15)`;
+    ctx.strokeStyle = `hsla(${moving.color}, 70%, 60%, 0.13)`;
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
+    ctx.setLineDash([4, 7]);
     ctx.beginPath();
     ctx.moveTo(screenX, screenY + BLOCK_H / 2);
     ctx.lineTo(screenX + moving.w, screenY + BLOCK_H / 2);
@@ -397,7 +391,7 @@
     ctx.setLineDash([]);
     ctx.restore();
 
-    drawBlock(moving, 0.92);
+    drawBlock(moving, 0.92, true);
   }
 
   // ── PARALLAX BACKGROUND ──────────────────────────────────────────
@@ -413,31 +407,28 @@
     ctx.fillStyle = `rgb(${r},${g2},${b2})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Multi-layer parallax grids
+    // Multi-layer parallax grids — batched into single path per layer
     BG_LAYERS.forEach((layer, li) => {
       const offset = (cameraY * layer.speed) % layer.size;
+      const sx = screenShake.x * (li + 1) * 0.3;
+      const sy = screenShake.y * (li + 1) * 0.3;
       ctx.save();
       ctx.strokeStyle = `rgba(224,255,79,${layer.alpha + depth * 0.015})`;
       ctx.lineWidth = 0.5;
-
-      // Vertical lines
+      ctx.beginPath(); // single path for ALL lines in this layer
       const cols = Math.ceil(canvas.width / layer.size) + 2;
       for (let i = -1; i < cols; i++) {
-        const x = i * layer.size + (screenShake.x * (li + 1) * 0.3);
-        ctx.beginPath();
+        const x = i * layer.size + sx;
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height);
-        ctx.stroke();
       }
-      // Horizontal lines
       const rows = Math.ceil(canvas.height / layer.size) + 2;
       for (let i = -1; i < rows; i++) {
-        const y = i * layer.size - offset + (screenShake.y * (li + 1) * 0.3);
-        ctx.beginPath();
+        const y = i * layer.size - offset + sy;
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
-        ctx.stroke();
       }
+      ctx.stroke(); // one draw call for whole grid layer
       ctx.restore();
     });
 
@@ -456,43 +447,45 @@
   }
 
   // ── PARTICLES ────────────────────────────────────────────────────
-  function spawnPerfectParticles(cx, cy, blockH) {
-    const count = 28 + comboCount * 6;
+  const MAX_PARTICLES = 60; // hard cap
+
+  function spawnPerfectParticles(cx, cy) {
+    const count = Math.min(16 + comboCount * 3, 28); // was 28+combo*6
     for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
-      const speed = 2.5 + Math.random() * 3.5 + comboCount * 0.5;
-      const h2 = (hue + Math.random() * 60 - 30 + 360) % 360;
+      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
+      const speed = 2 + Math.random() * 3 + comboCount * 0.4;
+      const h2 = (hue + Math.random() * 50 - 25 + 360) % 360;
       particles.push({
         x: cx, y: cy,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.5,
+        vy: Math.sin(angle) * speed - 1.2,
         life: 1, maxLife: 1,
-        r: 2 + Math.random() * 3,
-        color: `hsl(${h2}, 90%, 70%)`,
+        r: 2 + Math.random() * 2.5,
+        color: h2, // store raw hue int, build string at draw time
         rot: Math.random() * Math.PI * 2,
-        vrot: (Math.random() - 0.5) * 0.25,
-        type: Math.random() < 0.4 ? 'square' : 'circle',
-        gravity: 0.08,
-        alpha: 1,
+        vrot: (Math.random() - 0.5) * 0.2,
+        type: Math.random() < 0.4 ? 1 : 0, // 0=circle, 1=square
+        gravity: 0.07,
       });
     }
-    // Sparkle streaks
-    for (let i = 0; i < 8; i++) {
+    // Streaks — fewer, no shadowBlur needed
+    for (let i = 0; i < 5; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 4 + Math.random() * 5;
+      const speed = 3.5 + Math.random() * 4;
       particles.push({
         x: cx, y: cy,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 0.6, maxLife: 0.6,
-        r: 1, color: '#ffffff',
-        rot: 0, vrot: 0,
-        type: 'streak',
+        life: 0.55, maxLife: 0.55,
+        r: 0, color: -1, // -1 = white streak
+        rot: angle, vrot: 0,
+        type: 2, // streak
         gravity: 0,
         pvx: Math.cos(angle) * speed, pvy: Math.sin(angle) * speed,
-        alpha: 1,
       });
     }
+    // Enforce global cap
+    if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
   }
 
   function spawnFallingChunk(x, y, w, colorH, side) {
@@ -520,12 +513,11 @@
       p.x  += p.vx;
       p.y  += p.vy;
       p.vy += p.gravity || 0;
-      p.vx *= 0.97;
-      p.vy *= 0.97;
+      p.vx *= 0.96;
+      p.vy *= 0.96;
       p.rot += p.vrot;
-      p.life -= 0.022;
-      p.alpha = Math.max(0, p.life / p.maxLife);
-      if (p.life <= 0) particles.splice(i, 1);
+      p.life -= 0.028; // slightly faster decay = fewer active particles
+      if (p.life <= 0) { particles.splice(i, 1); }
     }
   }
 
@@ -554,81 +546,87 @@
   }
 
   function drawParticles() {
-    particles.forEach(p => {
-      ctx.save();
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle   = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur  = 6;
-      ctx.translate(p.x + screenShake.x, p.y - cameraY + screenShake.y);
-      ctx.rotate(p.rot);
-      if (p.type === 'circle') {
+    if (!particles.length) return;
+    const sx = screenShake.x, sy = screenShake.y - cameraY;
+
+    // Draw circles in one pass
+    ctx.beginPath();
+    // We can't batch different alphas/colors easily, so group by type and draw individually
+    // but avoid save/restore and shadowBlur entirely
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const alpha = Math.max(0, p.life / p.maxLife);
+      const px = p.x + sx, py = p.y + sy;
+
+      if (p.type === 2) {
+        // streak
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth   = 1.2;
         ctx.beginPath();
-        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (p.type === 'square') {
-        ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
-      } else if (p.type === 'streak') {
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth   = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-p.pvx * 3, -p.pvy * 3);
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - p.pvx * 2.5, py - p.pvy * 2.5);
         ctx.stroke();
+      } else {
+        const colorStr = `hsl(${p.color % 360},88%,70%)`;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = colorStr;
+        if (p.type === 1) {
+          // square — no rotate (skip translate/rotate for perf)
+          ctx.fillRect(px - p.r, py - p.r, p.r * 2, p.r * 2);
+        } else {
+          // circle
+          ctx.beginPath();
+          ctx.arc(px, py, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-      ctx.restore();
-    });
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawFallingChunks() {
+    if (!fallingChunks.length) return;
     fallingChunks.forEach(c => {
       const screenY = c.y - cameraY + screenShake.y;
       const screenX = c.x + screenShake.x;
       if (screenY > canvas.height + 80) return;
       ctx.save();
-      ctx.globalAlpha  = c.alpha;
+      ctx.globalAlpha = c.alpha;
       ctx.translate(screenX + c.w / 2, screenY + BLOCK_H / 2);
       ctx.rotate(c.rot);
-      const g = ctx.createLinearGradient(-c.w/2, -BLOCK_H/2, c.w/2, BLOCK_H/2);
-      g.addColorStop(0, `hsl(${c.color % 360}, 72%, 65%)`);
-      g.addColorStop(1, `hsl(${(c.color+30) % 360}, 65%, 45%)`);
-      ctx.fillStyle    = g;
-      ctx.shadowColor  = `hsl(${c.color % 360}, 80%, 60%)`;
-      ctx.shadowBlur   = 10;
+      // Simple flat color — no gradient, no shadowBlur on falling debris
+      ctx.fillStyle = `hsl(${c.color % 360}, 70%, 58%)`;
       ctx.beginPath();
       ctx.roundRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H, 3);
       ctx.fill();
-      // sheen
-      const sheen = ctx.createLinearGradient(-c.w/2, -BLOCK_H/2, -c.w/2, 0);
-      sheen.addColorStop(0, 'rgba(255,255,255,0.22)');
-      sheen.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = sheen;
-      ctx.fill();
+      // Minimal sheen
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H * 0.4);
       ctx.restore();
     });
   }
 
   function drawShockwaves() {
+    if (!shockwaves.length) return;
     shockwaves.forEach(s => {
       const screenY = s.y - cameraY + screenShake.y;
       const screenX = s.x + screenShake.x;
-      const progress = 1 - s.life;
-      const alpha    = s.life * 0.7;
+      const alpha   = s.life * 0.65;
+      const lw      = Math.max(0.5, s.life * 3.5);
       ctx.save();
       ctx.globalAlpha = alpha;
+      ctx.strokeStyle = `hsl(${hue}, 88%, 72%)`;
+      ctx.lineWidth   = lw;
       // Outer ring
-      ctx.strokeStyle = `hsla(${hue}, 90%, 75%, 1)`;
-      ctx.lineWidth   = Math.max(1, (1 - progress) * 4);
-      ctx.shadowColor = `hsla(${hue}, 90%, 75%, 0.8)`;
-      ctx.shadowBlur  = 12;
       ctx.beginPath();
-      ctx.ellipse(screenX, screenY, s.r, s.r * 0.28, 0, 0, Math.PI * 2);
+      ctx.ellipse(screenX, screenY, s.r, s.r * 0.26, 0, 0, Math.PI * 2);
       ctx.stroke();
       // Inner ring
-      ctx.globalAlpha = alpha * 0.4;
-      ctx.lineWidth   = 1;
+      ctx.globalAlpha = alpha * 0.35;
+      ctx.lineWidth   = 0.8;
       ctx.beginPath();
-      ctx.ellipse(screenX, screenY, s.r * 0.6, s.r * 0.17, 0, 0, Math.PI * 2);
+      ctx.ellipse(screenX, screenY, s.r * 0.55, s.r * 0.15, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     });
@@ -768,10 +766,6 @@
 
     if (isPerfect) {
       triggerPerfect();
-      const blockCX = moving.x + moving.w / 2 + screenShake.x;
-      const blockCY = moving.y - cameraY + BLOCK_H / 2;
-      spawnPerfectParticles(blockCX + canvas.width / 2 - blockCX, moving.y + BLOCK_H / 2);
-      // Actually use world coords for particles
       spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
       spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
       triggerShake(3 + comboCount * 0.8);
@@ -818,17 +812,17 @@
 
   // ── BLOCK SHADOW ─────────────────────────────────────────────────
   function drawShadows() {
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); // single path for all shadows
     blocks.forEach(b => {
       const screenY = b.y - cameraY + screenShake.y;
       if (screenY > canvas.height + 30 || screenY < -60) return;
-      ctx.save();
-      ctx.globalAlpha = 0.1;
-      ctx.fillStyle   = '#000';
-      ctx.beginPath();
-      ctx.ellipse(b.x + screenShake.x + b.w / 2, screenY + BLOCK_H + 5, b.w * 0.42, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      ctx.ellipse(b.x + screenShake.x + b.w / 2, screenY + BLOCK_H + 5, b.w * 0.42, 4, 0, 0, Math.PI * 2);
     });
+    ctx.fill();
+    ctx.restore();
   }
 
   // ── GAME LOOP ────────────────────────────────────────────────────
@@ -850,8 +844,8 @@
 
     // Draw placed blocks
     blocks.forEach((b, i) => {
-      const isTop  = i === blocks.length - 1;
-      drawBlock(b, 1, isTop ? 4 : 0);
+      const isTop = i === blocks.length - 1;
+      drawBlock(b, 1, isTop);
     });
     drawShadows();
 
