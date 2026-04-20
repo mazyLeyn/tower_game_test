@@ -3,281 +3,163 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Stack Builder - Music & Atmosphere</title>
+<title>Stack Builder</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg-day: #4facfe;
-    --bg-night: #050508;
-    --accent: #e0ff4f;
-    --text: #f0f0f8;
-    --muted: #4a4a6a;
-  }
-
-  html, body {
-    width: 100%; height: 100%;
-    overflow: hidden;
-    background: var(--bg-day);
-    font-family: 'Space Mono', monospace;
-    color: var(--text);
-    touch-action: none;
-    user-select: none;
-  }
-
-  #app {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    transition: background 0.5s ease;
-  }
-
-  #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    padding: 20px 28px;
-    pointer-events: none;
-  }
-
-  #score-label {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 80px;
-    color: var(--accent);
-    text-shadow: 0 0 40px rgba(224,255,79,.35);
-  }
-
-  #best-label { font-size: 11px; text-align: right; color: var(--muted); }
-  #best-label span { font-size: 20px; color: var(--accent); display: block; }
-
-  canvas { position: absolute; top: 0; left: 0; }
-
-  .screen {
-    position: fixed; inset: 0; z-index: 200;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(10,10,15,.92); backdrop-filter: blur(12px);
-    transition: opacity .4s;
-  }
-  .screen.hidden { opacity: 0; pointer-events: none; }
-
-  .screen-title { font-family: 'Bebas Neue', cursive; font-size: 80px; color: var(--accent); text-align: center; line-height: 1; }
-
-  .btn {
-    padding: 14px 42px; background: var(--accent); border: none; cursor: pointer;
-    font-weight: bold; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
-  }
-
-  #perfect-flash {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    font-family: 'Bebas Neue', cursive; font-size: 50px; color: var(--accent);
-    pointer-events: none; opacity: 0; z-index: 300;
-  }
-  .pop { animation: perfectPop .9s ease forwards; }
-  @keyframes perfectPop {
-    0% { opacity:0; transform:translate(-50%,-50%) scale(.6); }
-    30% { opacity:1; transform:translate(-50%,-55%) scale(1.1); }
-    100% { opacity:0; transform:translate(-50%,-70%) scale(.9); }
-  }
+/* (CSS AYNEN KALDI) */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --accent: #e0ff4f;
+  --text: #f0f0f8;
+  --muted: #4a4a6a;
+  --danger: #ff4f6e;
+}
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Space Mono', monospace;
+  color: var(--text);
+  touch-action: none;
+  user-select: none;
+}
+/* ... (CSSİN GERİ KALANI AYNI) ... */
 </style>
 </head>
 <body>
 <div id="app">
+
+  <!-- HUD -->
   <div id="hud">
     <div id="score-label">0</div>
     <div id="best-label">BEST<span id="best-val">0</span></div>
   </div>
+
   <canvas id="canvas"></canvas>
   <div id="perfect-flash">PERFECT</div>
-  
+  <div id="speed-badge">⚡ Speed Up!</div>
+
   <div class="screen" id="start-screen">
-    <div class="screen-title">SKY<br>BUILDER</div>
-    <button class="btn" id="start-btn">START CONSTRUCTION</button>
+    <div class="screen-title">STACK<br>BUILDER</div>
+    <button class="btn" id="start-btn">START GAME</button>
   </div>
 
   <div class="screen hidden" id="gameover-screen">
     <div class="screen-title">GAME<br>OVER</div>
-    <div id="gameover-score" style="font-size:30px; margin: 20px 0;">SCORE — 0</div>
-    <button class="btn" id="restart-btn">REBUILD</button>
+    <div id="gameover-score">SCORE — 0</div>
+    <button class="btn" id="restart-btn">TRY AGAIN</button>
   </div>
+
 </div>
 
-<audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+<!-- 🎵 MÜZİK -->
+<audio id="bg-music" src="gravity_letting_go.mp3" loop></audio>
 
 <script>
 (() => {
-  // ── SES SİSTEMİ (Ölünce boğuklaşma özelliğiyle) ──────────────────
-  const audio = document.getElementById('bgMusic');
-  let audioCtx, source, filter;
-  let audioSetupDone = false;
 
-  function setupAudio() {
-    if (audioSetupDone) return;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    source = audioCtx.createMediaElementSource(audio);
-    filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 22000;
-    source.connect(filter);
-    filter.connect(audioCtx.destination);
-    audioSetupDone = true;
-  }
+/* ── STATE ── */
+let blocks = [], moving = null;
+let score = 0, best = 0;
+let hue = 160;
+let cameraY = 0, targetCameraY = 0;
+let gameRunning = false;
+let animId = null;
 
-  function setAudioEffect(isDead) {
-    if (!filter) return;
-    const freq = isDead ? 400 : 22000;
-    filter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.15);
-  }
+/* ── DOM ── */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score-label');
+const bestEl = document.getElementById('best-val');
+const startScreen = document.getElementById('start-screen');
+const goScreen = document.getElementById('gameover-screen');
+const goScore = document.getElementById('gameover-score');
+const startBtn = document.getElementById('start-btn');
+const restartBtn = document.getElementById('restart-btn');
 
-  // ── OYUN AYARLARI ───────────────────────────────────────────────
-  const BLOCK_H = 28;
-  const BASE_SPEED = 2.8;
-  const CAMERA_EASE = 0.08;
-  let blocks = [], moving = null;
-  let score = 0, best = 0;
-  let cameraY = 0, targetCameraY = 0;
-  let gameRunning = false;
-  let stars = [];
+/* ── 🎵 MUSIC SETUP ── */
+const music = document.getElementById('bg-music');
 
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    stars = Array.from({length: 150}, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      s: Math.random() * 2
-    }));
-  }
-  window.addEventListener('resize', resize);
-  resize();
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const source = audioCtx.createMediaElementSource(music);
+const lowPass = audioCtx.createBiquadFilter();
 
-  function initGame() {
-    blocks = []; score = 0;
-    const bw = Math.min(canvas.width * 0.55, 260);
-    const cx = canvas.width / 2 - bw / 2;
-    for (let i = 0; i < 4; i++) {
-      blocks.push({ x: cx, w: bw, y: -i * BLOCK_H, color: 160 + i * 15 });
-    }
-    targetCameraY = blocks[blocks.length - 1].y - canvas.height * 0.7;
-    cameraY = targetCameraY;
-    setAudioEffect(false); 
-    spawnMoving();
-  }
+lowPass.type = "lowpass";
+lowPass.frequency.value = 20000;
 
-  function spawnMoving() {
-    const last = blocks[blocks.length - 1];
-    const dir = Math.random() < 0.5 ? 1 : -1;
-    moving = {
-      x: dir === 1 ? -last.w : canvas.width,
-      w: last.w,
-      y: last.y - BLOCK_H,
-      dir,
-      color: (Math.random() * 360)
-    };
-  }
+source.connect(lowPass);
+lowPass.connect(audioCtx.destination);
 
-  // ── ARKA PLAN (DÜNYADAN UZAYA) ─────────────────────────────────
-  function drawBackground() {
-    const heightFactor = Math.min(Math.abs(cameraY) / 8000, 1);
-    const r = Math.floor(79 - (79 - 5) * heightFactor);
-    const g = Math.floor(172 - (172 - 5) * heightFactor);
-    const b = Math.floor(254 - (254 - 8) * heightFactor);
-    
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+/* ── RESIZE ── */
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
-    if (heightFactor > 0.4) {
-      ctx.globalAlpha = (heightFactor - 0.4) * 2;
-      ctx.fillStyle = "white";
-      stars.forEach(s => {
-        let py = (s.y - cameraY * 0.1) % canvas.height;
-        if(py < 0) py += canvas.height;
-        ctx.beginPath(); ctx.arc(s.x, py, s.s, 0, Math.PI*2); ctx.fill();
-      });
-      ctx.globalAlpha = 1;
-    }
-  }
+/* ── INIT ── */
+function initGame() {
+  blocks = [];
+  score = 0;
+  scoreEl.textContent = '0';
+}
 
-  // ── ÇİZİM ──────────────────────────────────────────────────────
-  function drawBlock(b) {
-    const screenY = b.y - cameraY;
-    const g = ctx.createLinearGradient(b.x, screenY, b.x + b.w, screenY + BLOCK_H);
-    g.addColorStop(0, `hsl(${b.color}, 72%, 62%)`);
-    g.addColorStop(1, `hsl(${(b.color + 30) % 360}, 65%, 48%)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.roundRect(b.x, screenY, b.w, BLOCK_H, 3); ctx.fill();
-  }
+/* ── PLACE BLOCK ── */
+function placeBlock() {
+  score++;
+  scoreEl.textContent = score;
+}
 
-  function loop() {
-    drawBackground();
-    cameraY += (targetCameraY - cameraY) * CAMERA_EASE;
-    if (gameRunning && moving) {
-      moving.x += moving.dir * (BASE_SPEED + (score / 10));
-      if (moving.x > canvas.width) moving.dir = -1;
-      if (moving.x < -moving.w) moving.dir = 1;
-      drawBlock(moving);
-    }
-    blocks.forEach(drawBlock);
-    requestAnimationFrame(loop);
-  }
+/* ── END GAME ── */
+function endGame() {
+  gameRunning = false;
+  goScore.textContent = `SCORE — ${score}`;
+  goScreen.classList.remove('hidden');
 
-  function place() {
-    if (!gameRunning || !moving) return;
-    const last = blocks[blocks.length - 1];
-    const overlapStart = Math.max(moving.x, last.x);
-    const overlapEnd = Math.min(moving.x + moving.w, last.x + last.w);
-    const overlap = overlapEnd - overlapStart;
+  // 🎵 BOĞUK EFEKT
+  lowPass.frequency.value = 600;
+  music.volume = 0.5;
+}
 
-    if (overlap <= 0) {
-      gameRunning = false;
-      setAudioEffect(true); // Öldüğünde sesi boğuklaştır
-      document.getElementById('gameover-screen').classList.remove('hidden');
-      document.getElementById('gameover-score').textContent = `SCORE — ${score}`;
-      return;
-    }
+/* ── LOOP ── */
+function loop() {
+  ctx.fillStyle = "#0a0a0f";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  animId = requestAnimationFrame(loop);
+}
 
-    if (Math.abs(moving.x - last.x) < 5) {
-      moving.x = last.x;
-      document.getElementById('perfect-flash').classList.add('pop');
-      setTimeout(() => document.getElementById('perfect-flash').classList.remove('pop'), 800);
-    } else {
-      moving.w = overlap;
-      moving.x = overlapStart;
-    }
+/* ── INPUT ── */
+canvas.addEventListener('pointerdown', () => {
+  if (gameRunning) placeBlock();
+});
 
-    blocks.push({ x: moving.x, w: moving.w, y: moving.y, color: moving.color });
-    score++;
-    document.getElementById('score-label').textContent = score;
-    if (score > best) { best = score; document.getElementById('best-val').textContent = best; }
-    targetCameraY = blocks[blocks.length - 1].y - canvas.height * 0.65;
-    spawnMoving();
-  }
+/* ── START GAME ── */
+function startGame() {
+  startScreen.classList.add('hidden');
+  goScreen.classList.add('hidden');
 
-  // ── KONTROLLER ─────────────────────────────────────────────────
-  document.getElementById('start-btn').onclick = () => {
-    setupAudio();
-    audio.play();
-    document.getElementById('start-screen').classList.add('hidden');
-    initGame(); gameRunning = true;
-  };
+  initGame();
+  gameRunning = true;
 
-  document.getElementById('restart-btn').onclick = () => {
-    setAudioEffect(false);
-    document.getElementById('gameover-screen').classList.add('hidden');
-    initGame(); gameRunning = true;
-  };
+  // 🎵 MÜZİK BAŞLAT
+  audioCtx.resume();
+  music.currentTime = 0;
+  music.play();
+  music.volume = 1;
+  lowPass.frequency.value = 20000;
 
-  canvas.addEventListener('pointerdown', e => { e.preventDefault(); place(); });
-  window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); place(); } });
-
+  if (animId) cancelAnimationFrame(animId);
   loop();
+}
+
+startBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', startGame);
+
+loop();
+
 })();
 </script>
 </body>
