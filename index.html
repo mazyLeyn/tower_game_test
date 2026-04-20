@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sky Scraper Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-day: #4facfe;
+    --bg-night: #050508;
+    --accent: #ffcc00; /* İnşaat sarısı */
+    --text: #ffffff;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg-day);
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    touch-action: none;
+    user-select: none;
+  }
+
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    transition: background 0.5s ease;
+  }
+
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 28px;
+    pointer-events: none;
+  }
+
+  #score-label {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 80px;
+    color: var(--accent);
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+  }
+
+  #best-label { font-size: 12px; text-align: right; color: rgba(255,255,255,0.8); }
+  #best-label span { font-size: 24px; color: var(--accent); display: block; }
+
+  canvas { position: absolute; top: 0; left: 0; }
+
+  .screen {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    transition: opacity .4s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  .screen-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 80px; color: var(--accent);
+    line-height: 0.9; text-align: center; margin-bottom: 10px;
+  }
+
+  .btn {
+    padding: 15px 40px; background: var(--accent); border: none;
+    font-weight: bold; cursor: pointer; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+  }
+
+  #perfect-flash {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%);
+    font-family: 'Bebas Neue', cursive; font-size: 50px; color: #fff;
+    pointer-events: none; opacity: 0; z-index: 300;
+  }
+  .pop { animation: popAnim 0.8s ease-out forwards; }
+  @keyframes popAnim { 0% {opacity:0; scale:0.5;} 50% {opacity:1; scale:1.2;} 100% {opacity:0; scale:1.5;} }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="hud">
+    <div id="score-label">0</div>
+    <div id="best-label">TOP FLOOR<span id="best-val">0</span></div>
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="perfect-flash">PERFECT ALIGNMENT</div>
+  
+  <div class="screen" id="start-screen">
+    <div class="screen-title">SKY<br>BUILDER</div>
+    <p style="margin-bottom:20px">Build to the moon!</p>
+    <button class="btn" id="start-btn">START CONSTRUCTION</button>
+  </div>
+
+  <div class="screen hidden" id="gameover-screen">
+    <div class="screen-title">STRUCTURE<br>COLLAPSED</div>
+    <div id="gameover-score" style="font-size:24px; margin-bottom:20px">FLOORS: 0</div>
+    <button class="btn" id="restart-btn">REBUILD</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const BLOCK_H = 40; // Kat yüksekliği
+  const BASE_SPEED = 3;
+  const CAMERA_EASE = 0.08;
+  
+  let blocks = [], moving = null;
+  let score = 0, best = 0;
+  let cameraY = 0, targetCameraY = 0;
+  let gameRunning = false;
+  let stars = [];
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = Array.from({length: 150}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      s: Math.random() * 2
+    }));
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function initGame() {
+    blocks = []; score = 0;
+    const bw = 200;
+    const cx = canvas.width/2 - bw/2;
+    // Zemin katları
+    for(let i=0; i<3; i++) {
+      blocks.push({x: cx, w: bw, y: -i * BLOCK_H, type: 'base'});
+    }
+    targetCameraY = blocks[blocks.length-1].y - canvas.height*0.7;
+    cameraY = targetCameraY;
+    spawnMoving();
+  }
+
+  function spawnMoving() {
+    const last = blocks[blocks.length-1];
+    moving = {
+      x: Math.random() > 0.5 ? -last.w : canvas.width,
+      w: last.w,
+      y: last.y - BLOCK_H,
+      dir: Math.random() > 0.5 ? 1 : -1
+    };
+  }
+
+  // --- ARKA PLAN ÇİZİMİ (DÜNYADAN UZAYA) ---
+  function drawBackground() {
+    const heightFactor = Math.min(Math.abs(cameraY) / 8000, 1);
+    
+    // Renk Geçişi: Açık Mavi -> Koyu Lacivert -> Siyah
+    const r = Math.floor(79 - (79 - 5) * heightFactor);
+    const g = Math.floor(172 - (172 - 5) * heightFactor);
+    const b = Math.floor(254 - (254 - 8) * heightFactor);
+    
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Yıldızlar (Yükseldikçe belirir)
+    if (heightFactor > 0.4) {
+      ctx.globalAlpha = (heightFactor - 0.4) * 2;
+      ctx.fillStyle = "white";
+      stars.forEach(s => {
+        let py = (s.y - cameraY * 0.1) % canvas.height;
+        if(py < 0) py += canvas.height;
+        ctx.beginPath(); ctx.arc(s.x, py, s.s, 0, Math.PI*2); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    // Bulutlar (Sadece aşağıdayken)
+    if (heightFactor < 0.6) {
+      ctx.fillStyle = "rgba(255,255,255, 0.2)";
+      for(let i=0; i<4; i++) {
+        let cx = (i * 400 - cameraY * 0.05) % (canvas.width + 200) - 100;
+        ctx.beginPath(); ctx.arc(cx, 200 + (i*100), 80, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // --- BİNA BLOĞU ÇİZİMİ ---
+  function drawBlock(b) {
+    const sY = b.y - cameraY;
+    
+    // Ana Bina Gövdesi
+    ctx.fillStyle = "#444"; // Beton rengi
+    ctx.fillRect(b.x, sY, b.w, BLOCK_H - 2);
+
+    // Pencereler
+    const winW = 8;
+    const winH = 12;
+    const gap = 12;
+    ctx.fillStyle = score > 15 ? "#ADD8E6" : "#f1c40f"; // Gece sarı, gündüz mavi cam
+    
+    for(let x = b.x + 10; x < b.x + b.w - 10; x += winW + gap) {
+      ctx.fillRect(x, sY + 8, winW, winH);
+      ctx.fillRect(x, sY + 24, winW, winH);
+    }
+
+    // Yan Detaylar (Kirişler)
+    ctx.fillStyle = "#222";
+    ctx.fillRect(b.x, sY, 4, BLOCK_H);
+    ctx.fillRect(b.x + b.w - 4, sY, 4, BLOCK_H);
+  }
+
+  function loop() {
+    drawBackground();
+    cameraY += (targetCameraY - cameraY) * CAMERA_EASE;
+
+    if (gameRunning && moving) {
+      moving.x += moving.dir * (BASE_SPEED + (score/10));
+      if(moving.x > canvas.width) moving.dir = -1;
+      if(moving.x < -moving.w) moving.dir = 1;
+      drawBlock(moving);
+    }
+
+    blocks.forEach(drawBlock);
+    requestAnimationFrame(loop);
+  }
+
+  function place() {
+    if(!gameRunning || !moving) return;
+    const last = blocks[blocks.length-1];
+    const overlap = Math.min(moving.x + moving.w, last.x + last.w) - Math.max(moving.x, last.x);
+
+    if(overlap <= 0) {
+      gameRunning = false;
+      document.getElementById('gameover-screen').classList.remove('hidden');
+      document.getElementById('gameover-score').textContent = `FLOORS: ${score}`;
+      return;
+    }
+
+    // Kusursuz yerleştirme bonusu
+    if(Math.abs(moving.x - last.x) < 5) {
+      moving.x = last.x;
+      document.getElementById('perfect-flash').classList.add('pop');
+      setTimeout(()=>document.getElementById('perfect-flash').classList.remove('pop'), 800);
+    }
+
+    blocks.push({x: Math.max(moving.x, last.x), w: overlap, y: moving.y});
+    score++;
+    document.getElementById('score-label').textContent = score;
+    if(score > best) { best = score; document.getElementById('best-val').textContent = best; }
+    
+    targetCameraY = blocks[blocks.length-1].y - canvas.height*0.6;
+    spawnMoving();
+  }
+
+  canvas.addEventListener('pointerdown', place);
+  window.addEventListener('keydown', e => e.code === 'Space' && place());
+  
+  document.getElementById('start-btn').onclick = () => {
+    document.getElementById('start-screen').classList.add('hidden');
+    initGame(); gameRunning = true;
+  };
+  document.getElementById('restart-btn').onclick = () => {
+    document.getElementById('gameover-screen').classList.add('hidden');
+    initGame(); gameRunning = true;
+  };
+
+  loop();
+})();
+</script>
+</body>
+</html>
+
