@@ -3,245 +3,903 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Stack Builder - Deluxe</title>
-
+<title>Stack Builder</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
 
-* { margin:0; padding:0; box-sizing:border-box; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root{
-  --bg:#07070c;
-  --accent:#e0ff4f;
-}
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --accent: #e0ff4f;
+    --text: #f0f0f8;
+    --muted: #4a4a6a;
+    --danger: #ff4f6e;
+  }
 
-body{
-  overflow:hidden;
-  background:var(--bg);
-  font-family:'Space Mono';
-  touch-action:none;
-  user-select:none;
-}
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    touch-action: none;
+    user-select: none;
+  }
 
-#canvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-}
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
 
-/* HUD unchanged visually */
-#hud{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;padding:20px;color:#fff}
-#score-label{font-size:80px;color:var(--accent);font-family:'Bebas Neue'}
-#best-label{font-size:12px;opacity:.6}
+  /* ── HUD ── */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 28px 0;
+    pointer-events: none;
+  }
 
-/* screens unchanged */
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.8);z-index:100}
-.hidden{display:none}
+  #score-label {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(56px, 12vw, 96px);
+    line-height: 1;
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(224,255,79,.35);
+    letter-spacing: 2px;
+    transition: text-shadow 0.3s;
+  }
+  #score-label.combo-glow {
+    text-shadow: 0 0 60px rgba(224,255,79,.9), 0 0 100px rgba(224,255,79,.4);
+  }
 
-.btn{padding:12px 30px;background:var(--accent);border:none;font-weight:bold;cursor:pointer}
+  #best-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+  #best-label span { color: var(--accent); font-size: 20px; display: block; }
+
+  /* ── COMBO HUD ── */
+  #combo-hud {
+    position: fixed;
+    top: 0; left: 50%; transform: translateX(-50%);
+    z-index: 110;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #combo-hud.visible { opacity: 1; }
+  #combo-count {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(28px, 6vw, 46px);
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(224,255,79,.8);
+    line-height: 1;
+  }
+  #combo-label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: rgba(224,255,79,.6);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* ── CANVAS ── */
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* ── OVERLAY SCREENS ── */
+  .screen {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,15,.92);
+    backdrop-filter: blur(12px);
+    gap: 20px;
+    transition: opacity .4s ease;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  .screen-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(52px, 14vw, 110px);
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-shadow: 0 0 60px rgba(224,255,79,.4);
+    line-height: 1;
+  }
+
+  .screen-sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 2;
+    max-width: 280px;
+  }
+
+  .btn {
+    margin-top: 10px;
+    padding: 14px 42px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+    transition: transform .15s, box-shadow .15s;
+    outline: none;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(224,255,79,.35); }
+  .btn:active { transform: translateY(0); }
+
+  #gameover-score {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(28px, 6vw, 44px);
+    color: var(--text);
+    letter-spacing: 2px;
+  }
+
+  /* ── SPEED BADGE ── */
+  #speed-badge {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    font-size: 10px;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .5s;
+  }
+  #speed-badge.show { opacity: 1; }
+
+  /* ── PERFECT FLASH ── */
+  #perfect-flash {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 48px;
+    color: var(--accent);
+    letter-spacing: 6px;
+    pointer-events: none;
+    z-index: 300;
+    opacity: 0;
+    text-shadow: 0 0 30px rgba(224,255,79,.7);
+  }
+  @keyframes perfectPop {
+    0%   { opacity:0; transform:translate(-50%,-50%) scale(.6); }
+    30%  { opacity:1; transform:translate(-50%,-55%) scale(1.15); }
+    70%  { opacity:1; transform:translate(-50%,-60%) scale(1); }
+    100% { opacity:0; transform:translate(-50%,-70%) scale(.9); }
+  }
+  #perfect-flash.pop { animation: perfectPop .9s ease forwards; }
 </style>
 </head>
-
 <body>
+<div id="app">
 
-<canvas id="canvas"></canvas>
+  <div id="hud">
+    <div id="score-label">0</div>
+    <div id="best-label">BEST<span id="best-val">0</span></div>
+  </div>
 
-<div id="hud">
-  <div id="score-label">0</div>
-  <div id="best-label">BEST <span id="best-val">0</span></div>
-</div>
+  <!-- Combo HUD -->
+  <div id="combo-hud">
+    <div id="combo-count">×1</div>
+    <div id="combo-label">Perfect Combo</div>
+  </div>
 
-<div id="start-screen" class="screen">
-  <h1 style="color:#e0ff4f">STACK BUILDER</h1>
-  <button id="start-btn" class="btn">START</button>
+  <canvas id="canvas"></canvas>
+  <div id="perfect-flash">PERFECT</div>
+  <div id="speed-badge">⚡ Speed Up!</div>
+
+  <div class="screen" id="start-screen">
+    <div class="screen-title">STACK<br>BUILDER</div>
+    <div class="screen-sub">Tap or press <strong>SPACE</strong> to place blocks.<br>Build as high as you can.</div>
+    <button class="btn" id="start-btn">START GAME</button>
+  </div>
+
+  <div class="screen hidden" id="gameover-screen">
+    <div class="screen-title">GAME<br>OVER</div>
+    <div id="gameover-score">SCORE — 0</div>
+    <div class="screen-sub">Blocks slipped — tower collapsed.</div>
+    <button class="btn" id="restart-btn">TRY AGAIN</button>
+  </div>
+
 </div>
 
 <script>
 (() => {
+  // ── CONFIG ──────────────────────────────────────────────────────
+  const BLOCK_H        = 28;
+  const BASE_SPEED     = 2.8;
+  const SPEED_STEP     = 0.22;
+  const PERFECT_TOL    = 4;
+  const CAMERA_EASE    = 0.08;
+  const GROUND_BLOCKS  = 4;
+  const BG_COLOR       = '#0a0a0f';
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+  // ── STATE ───────────────────────────────────────────────────────
+  let blocks = [], moving = null;
+  let score = 0, best = 0;
+  let hue = 160;
+  let cameraY = 0, targetCameraY = 0;
+  let gameRunning = false;
+  let animId = null;
+  let speedBadgeTimer = null;
 
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
+  // VFX state
+  let particles      = [];   // { x,y,vx,vy,life,maxLife,r,color,rot,vrot,type }
+  let fallingChunks  = [];   // { x,y,w,vx,vy,vrot,rot,color,alpha }
+  let shockwaves     = [];   // { x,y,r,maxR,life,maxLife }
+  let screenShake    = { x:0, y:0, mag:0, decay:0.85 };
+  let comboCount     = 0;
+  let comboVisible   = false;
+  let comboTimer     = null;
 
-// ───────── CORE STATE ─────────
-let blocks = [];
-let moving = null;
-let particles = [];
-let debris = [];
+  // Parallax bg layers
+  const BG_LAYERS = [
+    { speed: 0.08, alpha: 0.04, size: 120 },
+    { speed: 0.18, alpha: 0.035, size: 60 },
+    { speed: 0.32, alpha: 0.03, size: 25 },
+  ];
 
-let score = 0;
-let combo = 0;
+  // ── DOM ─────────────────────────────────────────────────────────
+  const canvas      = document.getElementById('canvas');
+  const ctx         = canvas.getContext('2d');
+  const scoreEl     = document.getElementById('score-label');
+  const bestEl      = document.getElementById('best-val');
+  const startScreen = document.getElementById('start-screen');
+  const goScreen    = document.getElementById('gameover-screen');
+  const goScore     = document.getElementById('gameover-score');
+  const startBtn    = document.getElementById('start-btn');
+  const restartBtn  = document.getElementById('restart-btn');
+  const perfectEl   = document.getElementById('perfect-flash');
+  const speedBadge  = document.getElementById('speed-badge');
+  const comboHud    = document.getElementById('combo-hud');
+  const comboCountEl= document.getElementById('combo-count');
 
-let cameraY = 0;
-let camVel = 0;
-let shake = 0;
+  // ── RESIZE ──────────────────────────────────────────────────────
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
 
-const BLOCK_H = 28;
-const BASE_SPEED = 2.8;
-const PERFECT_TOL = 4;
+  // ── HELPERS ─────────────────────────────────────────────────────
+  function lerp(a, b, t) { return a + (b - a) * t; }
 
-let hue = 160;
-let running = false;
-
-// ───────── INPUT ─────────
-window.addEventListener("keydown", e=>{
-  if(e.code==="Space") place();
-});
-canvas.addEventListener("pointerdown", place);
-
-// ───────── INIT ─────────
-function init(){
-  blocks=[];
-  particles=[];
-  debris=[];
-  score=0;
-  combo=0;
-  hue=160;
-
-  const base = {
-    x: canvas.width/2 - 120,
-    w: 240,
-    y: 0,
-    color: 160
-  };
-
-  blocks.push(base);
-
-  spawn(); // ✅ ALWAYS SAFE
-}
-
-// ───────── SPAWN ─────────
-function spawn(){
-  const last = blocks[blocks.length-1];
-
-  moving = {
-    x: Math.random()<0.5 ? -200 : canvas.width+200,
-    w: last.w,
-    y: last.y - BLOCK_H,
-    dir: Math.random()<0.5 ? 1 : -1,
-    color: hue+=18
-  };
-}
-
-// ───────── PLACE ─────────
-function place(){
-  if(!running || !moving) return;
-
-  const last = blocks[blocks.length-1];
-
-  const overlapStart = Math.max(moving.x, last.x);
-  const overlapEnd = Math.min(moving.x+moving.w, last.x+last.w);
-  const overlap = overlapEnd - overlapStart;
-
-  if(overlap<=0){
-    gameOver();
-    return;
+  function easeOutElastic(t) {
+    const c4 = (2 * Math.PI) / 4.5;
+    return t === 0 ? 0 : t === 1 ? 1 :
+      Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
   }
 
-  const diff = Math.abs(moving.x - last.x);
-
-  if(diff < PERFECT_TOL){
-    moving.x = last.x;
-    combo++;
-    shake += 6;
-  } else {
-    combo = 0;
-    moving.w = overlap;
-    moving.x = overlapStart;
+  function getSpeed() {
+    return BASE_SPEED + Math.floor(score / 5) * SPEED_STEP;
   }
 
-  blocks.push({...moving});
-
-  score++;
-  document.getElementById("score-label").innerText = score;
-
-  spawn();
-}
-
-// ───────── UPDATE ─────────
-function update(){
-
-  const target = -score*BLOCK_H + canvas.height*0.6;
-  camVel += (target - cameraY)*0.08;
-  camVel *= 0.75;
-  cameraY += camVel;
-
-  shake *= 0.85;
-
-  if(moving){
-    moving.x += moving.dir * BASE_SPEED;
-
-    if(moving.x > canvas.width+100) moving.dir = -1;
-    if(moving.x < -200) moving.dir = 1;
+  // ── BLOCK VISUALS ────────────────────────────────────────────────
+  function blockGradient(h, x, y, w, ht, glowMult = 1) {
+    const g = ctx.createLinearGradient(x, y, x + w, y + ht);
+    const l1 = 68 + comboCount * 3;
+    const s1 = 72 + comboCount * 2;
+    g.addColorStop(0,   `hsl(${h % 360}, ${Math.min(s1,95)}%, ${Math.min(l1,80)}%)`);
+    g.addColorStop(0.4, `hsl(${(h+15) % 360}, ${Math.min(s1-5,90)}%, ${Math.min(l1-8,72)}%)`);
+    g.addColorStop(1,   `hsl(${(h+35) % 360}, 65%, ${Math.max(l1-20,44)}%)`);
+    return g;
   }
-}
 
-// ───────── DRAW ─────────
-function draw(){
-  ctx.fillStyle="#07070c";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  function drawBlock(b, alpha = 1, extraGlow = 0) {
+    const screenY = b.y - cameraY + screenShake.y;
+    const screenX = b.x + screenShake.x;
+    if (screenY > canvas.height + 60 || screenY < -80) return;
 
-  ctx.save();
-  ctx.translate(0, shake*(Math.random()-0.5));
+    const glowIntensity = 8 + comboCount * 4 + extraGlow;
+    const glowColor = `hsla(${b.color % 360}, 80%, 65%, ${Math.min(0.85, 0.4 + comboCount * 0.08)})`;
 
-  // blocks
-  for(const b of blocks){
-    const y = b.y - cameraY;
+    ctx.save();
+    ctx.globalAlpha = alpha;
 
-    ctx.shadowBlur = combo>2 ? 25 : 10;
-    ctx.shadowColor = `hsl(${b.color},100%,60%)`;
+    // Neon glow layers
+    ctx.shadowColor  = glowColor;
+    ctx.shadowBlur   = glowIntensity;
+    ctx.fillStyle    = blockGradient(b.color, screenX, screenY, b.w, BLOCK_H);
+    ctx.beginPath();
+    ctx.roundRect(screenX, screenY, b.w, BLOCK_H, 4);
+    ctx.fill();
 
-    ctx.fillStyle = `hsl(${b.color},80%,55%)`;
-    ctx.fillRect(b.x,y,b.w,BLOCK_H);
+    // Second glow pass for depth
+    if (comboCount >= 2) {
+      ctx.shadowBlur  = glowIntensity * 2.2;
+      ctx.shadowColor = `hsla(${(b.color + 30) % 360}, 90%, 70%, 0.3)`;
+      ctx.fill();
+    }
 
     ctx.shadowBlur = 0;
+
+    // Glassmorphic top sheen
+    const sheen = ctx.createLinearGradient(screenX, screenY, screenX, screenY + BLOCK_H * 0.55);
+    sheen.addColorStop(0,   'rgba(255,255,255,0.28)');
+    sheen.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+    sheen.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen;
+    ctx.beginPath();
+    ctx.roundRect(screenX + 2, screenY + 2, b.w - 4, BLOCK_H - 4, 3);
+    ctx.fill();
+
+    // Edge rim light
+    ctx.strokeStyle = `hsla(${b.color % 360}, 80%, 80%, 0.25)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(screenX + 0.5, screenY + 0.5, b.w - 1, BLOCK_H - 1, 4);
+    ctx.stroke();
+
+    // Bottom shadow stripe
+    ctx.globalAlpha = alpha * 0.22;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.roundRect(screenX + 3, screenY + BLOCK_H - 6, b.w - 6, 4, 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
-  // moving block
-  if(moving){
-    const y = moving.y - cameraY;
-    ctx.fillStyle = `hsl(${moving.color},80%,60%)`;
-    ctx.fillRect(moving.x,y,moving.w,BLOCK_H);
+  function drawMoving() {
+    if (!moving) return;
+    const screenY = moving.y - cameraY + screenShake.y;
+    const screenX = moving.x + screenShake.x;
+
+    // Predict line
+    ctx.save();
+    ctx.strokeStyle = `hsla(${moving.color}, 70%, 60%, 0.15)`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY + BLOCK_H / 2);
+    ctx.lineTo(screenX + moving.w, screenY + BLOCK_H / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    drawBlock(moving, 0.92);
   }
 
-  ctx.restore();
-}
+  // ── PARALLAX BACKGROUND ──────────────────────────────────────────
+  function drawBackground() {
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// ───────── LOOP ─────────
-function loop(){
-  if(running){
-    update();
-    draw();
+    // Ambient vertical gradient tint that shifts with height
+    const depth = -targetCameraY / 2000;
+    const r = Math.floor(lerp(10, 5, Math.min(depth, 1)));
+    const g2 = Math.floor(lerp(10, 8, Math.min(depth, 1)));
+    const b2 = Math.floor(lerp(15, 25, Math.min(depth, 1)));
+    ctx.fillStyle = `rgb(${r},${g2},${b2})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Multi-layer parallax grids
+    BG_LAYERS.forEach((layer, li) => {
+      const offset = (cameraY * layer.speed) % layer.size;
+      ctx.save();
+      ctx.strokeStyle = `rgba(224,255,79,${layer.alpha + depth * 0.015})`;
+      ctx.lineWidth = 0.5;
+
+      // Vertical lines
+      const cols = Math.ceil(canvas.width / layer.size) + 2;
+      for (let i = -1; i < cols; i++) {
+        const x = i * layer.size + (screenShake.x * (li + 1) * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      // Horizontal lines
+      const rows = Math.ceil(canvas.height / layer.size) + 2;
+      for (let i = -1; i < rows; i++) {
+        const y = i * layer.size - offset + (screenShake.y * (li + 1) * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    // Distant horizon glow at the top as tower gets taller
+    if (depth > 0.1) {
+      const horizGrad = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height * 0.2, 0,
+        canvas.width / 2, canvas.height * 0.2, canvas.width * 0.7
+      );
+      const a = Math.min(depth * 0.06, 0.08);
+      horizGrad.addColorStop(0, `hsla(${hue}, 70%, 50%, ${a})`);
+      horizGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = horizGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
   }
-  requestAnimationFrame(loop);
-}
 
-// ───────── GAME OVER ─────────
-function gameOver(){
-  running = false;
-  alert("Game Over: " + score);
-}
+  // ── PARTICLES ────────────────────────────────────────────────────
+  function spawnPerfectParticles(cx, cy, blockH) {
+    const count = 28 + comboCount * 6;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
+      const speed = 2.5 + Math.random() * 3.5 + comboCount * 0.5;
+      const h2 = (hue + Math.random() * 60 - 30 + 360) % 360;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        life: 1, maxLife: 1,
+        r: 2 + Math.random() * 3,
+        color: `hsl(${h2}, 90%, 70%)`,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.25,
+        type: Math.random() < 0.4 ? 'square' : 'circle',
+        gravity: 0.08,
+        alpha: 1,
+      });
+    }
+    // Sparkle streaks
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 4 + Math.random() * 5;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.6, maxLife: 0.6,
+        r: 1, color: '#ffffff',
+        rot: 0, vrot: 0,
+        type: 'streak',
+        gravity: 0,
+        pvx: Math.cos(angle) * speed, pvy: Math.sin(angle) * speed,
+        alpha: 1,
+      });
+    }
+  }
 
-// ───────── START FIX ─────────
-document.getElementById("start-btn").onclick = () => {
-  document.getElementById("start-screen").style.display = "none";
-  init();
-  running = true;
-};
+  function spawnFallingChunk(x, y, w, colorH, side) {
+    // "side" is 'left' or 'right' — which offcut fell
+    const vx = side === 'left' ? -1.5 - Math.random() * 2 : 1.5 + Math.random() * 2;
+    fallingChunks.push({
+      x, y,
+      w: Math.max(w, 4),
+      vx,
+      vy: -1 - Math.random() * 1.5,
+      vrot: (Math.random() - 0.5) * 0.12,
+      rot: 0,
+      color: colorH,
+      alpha: 1,
+    });
+  }
 
-// 🔥 CRITICAL: FIRST INIT (so canvas is not empty black bug)
-init();
-loop();
+  function spawnShockwave(cx, cy) {
+    shockwaves.push({ x: cx, y: cy, r: 0, maxR: 90 + comboCount * 20, life: 1, maxLife: 1 });
+  }
 
+  function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += p.gravity || 0;
+      p.vx *= 0.97;
+      p.vy *= 0.97;
+      p.rot += p.vrot;
+      p.life -= 0.022;
+      p.alpha = Math.max(0, p.life / p.maxLife);
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function updateFallingChunks() {
+    const GRAVITY = 0.38;
+    for (let i = fallingChunks.length - 1; i >= 0; i--) {
+      const c = fallingChunks[i];
+      c.vy   += GRAVITY;
+      c.x    += c.vx;
+      c.y    += c.vy;
+      c.rot  += c.vrot;
+      c.alpha -= 0.012;
+      if (c.alpha <= 0 || c.y - cameraY > canvas.height + 60) {
+        fallingChunks.splice(i, 1);
+      }
+    }
+  }
+
+  function updateShockwaves() {
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+      const s = shockwaves[i];
+      s.r    += (s.maxR - s.r) * 0.14;
+      s.life -= 0.04;
+      if (s.life <= 0) shockwaves.splice(i, 1);
+    }
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle   = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur  = 6;
+      ctx.translate(p.x + screenShake.x, p.y - cameraY + screenShake.y);
+      ctx.rotate(p.rot);
+      if (p.type === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'square') {
+        ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
+      } else if (p.type === 'streak') {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth   = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-p.pvx * 3, -p.pvy * 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  function drawFallingChunks() {
+    fallingChunks.forEach(c => {
+      const screenY = c.y - cameraY + screenShake.y;
+      const screenX = c.x + screenShake.x;
+      if (screenY > canvas.height + 80) return;
+      ctx.save();
+      ctx.globalAlpha  = c.alpha;
+      ctx.translate(screenX + c.w / 2, screenY + BLOCK_H / 2);
+      ctx.rotate(c.rot);
+      const g = ctx.createLinearGradient(-c.w/2, -BLOCK_H/2, c.w/2, BLOCK_H/2);
+      g.addColorStop(0, `hsl(${c.color % 360}, 72%, 65%)`);
+      g.addColorStop(1, `hsl(${(c.color+30) % 360}, 65%, 45%)`);
+      ctx.fillStyle    = g;
+      ctx.shadowColor  = `hsl(${c.color % 360}, 80%, 60%)`;
+      ctx.shadowBlur   = 10;
+      ctx.beginPath();
+      ctx.roundRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H, 3);
+      ctx.fill();
+      // sheen
+      const sheen = ctx.createLinearGradient(-c.w/2, -BLOCK_H/2, -c.w/2, 0);
+      sheen.addColorStop(0, 'rgba(255,255,255,0.22)');
+      sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sheen;
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawShockwaves() {
+    shockwaves.forEach(s => {
+      const screenY = s.y - cameraY + screenShake.y;
+      const screenX = s.x + screenShake.x;
+      const progress = 1 - s.life;
+      const alpha    = s.life * 0.7;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Outer ring
+      ctx.strokeStyle = `hsla(${hue}, 90%, 75%, 1)`;
+      ctx.lineWidth   = Math.max(1, (1 - progress) * 4);
+      ctx.shadowColor = `hsla(${hue}, 90%, 75%, 0.8)`;
+      ctx.shadowBlur  = 12;
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY, s.r, s.r * 0.28, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner ring
+      ctx.globalAlpha = alpha * 0.4;
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY, s.r * 0.6, s.r * 0.17, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  // ── SCREEN SHAKE ─────────────────────────────────────────────────
+  function triggerShake(magnitude) {
+    screenShake.mag = magnitude;
+  }
+
+  function updateShake() {
+    if (screenShake.mag < 0.1) { screenShake.x = 0; screenShake.y = 0; return; }
+    screenShake.x   = (Math.random() - 0.5) * screenShake.mag;
+    screenShake.y   = (Math.random() - 0.5) * screenShake.mag;
+    screenShake.mag *= screenShake.decay;
+  }
+
+  // ── CAMERA ───────────────────────────────────────────────────────
+  let cameraEaseT    = 0;
+  let cameraEaseFrom = 0;
+  let cameraEaseTo   = 0;
+  let cameraEasing   = false;
+
+  function startCameraEase(to) {
+    cameraEaseFrom = cameraY;
+    cameraEaseTo   = to;
+    cameraEaseT    = 0;
+    cameraEasing   = true;
+  }
+
+  function updateCamera() {
+    if (cameraEasing) {
+      cameraEaseT = Math.min(1, cameraEaseT + 0.04);
+      cameraY      = lerp(cameraEaseFrom, cameraEaseTo, easeOutElastic(cameraEaseT));
+      if (cameraEaseT >= 1) cameraEasing = false;
+    } else {
+      cameraY += (targetCameraY - cameraY) * CAMERA_EASE;
+    }
+  }
+
+  // ── BLOCK FACTORY ────────────────────────────────────────────────
+  function makeBase() {
+    const W  = canvas.width;
+    const bw = Math.min(W * 0.55, 260);
+    const cx = W / 2 - bw / 2;
+    return { x: cx, w: bw, y: 0, color: 160 };
+  }
+
+  function spawnMoving() {
+    const last  = blocks[blocks.length - 1];
+    const dir   = (Math.random() < 0.5) ? 1 : -1;
+    const startX = dir === 1 ? -last.w - 20 : canvas.width + 20;
+    hue = (hue + 18) % 360;
+    moving = { x: startX, w: last.w, y: last.y - BLOCK_H, dir, color: hue };
+  }
+
+  // ── INIT GAME ────────────────────────────────────────────────────
+  function initGame() {
+    blocks         = [];
+    moving         = null;
+    score          = 0;
+    hue            = 160;
+    particles      = [];
+    fallingChunks  = [];
+    shockwaves     = [];
+    comboCount     = 0;
+    screenShake.mag = 0;
+
+    const base = makeBase();
+    for (let i = 0; i < GROUND_BLOCKS; i++) {
+      blocks.push({ x: base.x, w: base.w, y: -i * BLOCK_H, color: hue + i * 15 });
+    }
+
+    const topBlock    = blocks[blocks.length - 1];
+    targetCameraY     = topBlock.y - canvas.height * 0.7;
+    cameraY           = targetCameraY;
+    cameraEasing      = false;
+
+    scoreEl.textContent = '0';
+    updateComboUI();
+    spawnMoving();
+  }
+
+  // ── COMBO ────────────────────────────────────────────────────────
+  function updateComboUI() {
+    if (comboCount >= 2) {
+      comboCountEl.textContent = `×${comboCount}`;
+      comboHud.classList.add('visible');
+      scoreEl.classList.add('combo-glow');
+    } else {
+      comboHud.classList.remove('visible');
+      scoreEl.classList.remove('combo-glow');
+    }
+  }
+
+  function resetCombo() {
+    comboCount = 0;
+    updateComboUI();
+  }
+
+  // ── PLACE BLOCK ──────────────────────────────────────────────────
+  function placeBlock() {
+    if (!moving || !gameRunning) return;
+    const last = blocks[blocks.length - 1];
+
+    const overlapStart = Math.max(moving.x, last.x);
+    const overlapEnd   = Math.min(moving.x + moving.w, last.x + last.w);
+    const overlap      = overlapEnd - overlapStart;
+
+    if (overlap <= 0) {
+      endGame();
+      return;
+    }
+
+    const diff = Math.abs(moving.x - last.x);
+    let isPerfect = false;
+
+    if (diff <= PERFECT_TOL) {
+      moving.x = last.x;
+      moving.w = last.w;
+      isPerfect = true;
+      comboCount++;
+    } else {
+      // Spawn falling chunk(s)
+      if (moving.x < last.x) {
+        // left chunk falls
+        spawnFallingChunk(moving.x, moving.y, last.x - moving.x, moving.color, 'left');
+      }
+      if (moving.x + moving.w > last.x + last.w) {
+        // right chunk falls
+        spawnFallingChunk(last.x + last.w, moving.y, (moving.x + moving.w) - (last.x + last.w), moving.color, 'right');
+      }
+      moving.w = overlap;
+      moving.x = overlapStart;
+      resetCombo();
+    }
+
+    if (isPerfect) {
+      triggerPerfect();
+      const blockCX = moving.x + moving.w / 2 + screenShake.x;
+      const blockCY = moving.y - cameraY + BLOCK_H / 2;
+      spawnPerfectParticles(blockCX + canvas.width / 2 - blockCX, moving.y + BLOCK_H / 2);
+      // Actually use world coords for particles
+      spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
+      spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
+      triggerShake(3 + comboCount * 0.8);
+    } else {
+      triggerShake(1.5);
+    }
+
+    blocks.push({ x: moving.x, w: moving.w, y: moving.y, color: moving.color });
+    score++;
+    scoreEl.textContent = score;
+    if (score > best) { best = score; bestEl.textContent = best; }
+
+    if (score % 5 === 0) showSpeedBadge();
+
+    updateComboUI();
+
+    // Elastic camera snap
+    const newTop = blocks[blocks.length - 1];
+    targetCameraY = newTop.y - canvas.height * 0.68;
+    startCameraEase(targetCameraY);
+
+    spawnMoving();
+  }
+
+  // ── PERFECT FLASH ────────────────────────────────────────────────
+  function triggerPerfect() {
+    perfectEl.classList.remove('pop');
+    void perfectEl.offsetWidth;
+    perfectEl.classList.add('pop');
+  }
+
+  function showSpeedBadge() {
+    speedBadge.classList.add('show');
+    clearTimeout(speedBadgeTimer);
+    speedBadgeTimer = setTimeout(() => speedBadge.classList.remove('show'), 1800);
+  }
+
+  // ── END GAME ─────────────────────────────────────────────────────
+  function endGame() {
+    gameRunning = false;
+    goScore.textContent = `SCORE — ${score}`;
+    goScreen.classList.remove('hidden');
+  }
+
+  // ── BLOCK SHADOW ─────────────────────────────────────────────────
+  function drawShadows() {
+    blocks.forEach(b => {
+      const screenY = b.y - cameraY + screenShake.y;
+      if (screenY > canvas.height + 30 || screenY < -60) return;
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      ctx.fillStyle   = '#000';
+      ctx.beginPath();
+      ctx.ellipse(b.x + screenShake.x + b.w / 2, screenY + BLOCK_H + 5, b.w * 0.42, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  // ── GAME LOOP ────────────────────────────────────────────────────
+  function loop() {
+    drawBackground();
+
+    updateCamera();
+    updateShake();
+    updateParticles();
+    updateFallingChunks();
+    updateShockwaves();
+
+    if (moving && gameRunning) {
+      const speed = getSpeed();
+      moving.x += moving.dir * speed;
+      if (moving.x > canvas.width + 10) moving.dir = -1;
+      if (moving.x + moving.w < -10)    moving.dir =  1;
+    }
+
+    // Draw placed blocks
+    blocks.forEach((b, i) => {
+      const isTop  = i === blocks.length - 1;
+      drawBlock(b, 1, isTop ? 4 : 0);
+    });
+    drawShadows();
+
+    // VFX layers
+    drawShockwaves();
+    drawFallingChunks();
+    drawParticles();
+
+    drawMoving();
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  // ── INPUT ────────────────────────────────────────────────────────
+  function handleAction() {
+    if (gameRunning) placeBlock();
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); handleAction(); }
+  });
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    handleAction();
+  });
+
+  // ── START / RESTART ──────────────────────────────────────────────
+  function startGame() {
+    startScreen.classList.add('hidden');
+    goScreen.classList.add('hidden');
+    initGame();
+    gameRunning = true;
+    if (animId) cancelAnimationFrame(animId);
+    loop();
+  }
+
+  startBtn.addEventListener('click',   startGame);
+  restartBtn.addEventListener('click', startGame);
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !gameRunning) {
+      e.preventDefault();
+      startGame();
+    }
+  });
+
+  loop();
 })();
 </script>
-
 </body>
 </html>
