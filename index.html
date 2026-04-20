@@ -63,8 +63,12 @@ body{
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
 
 // ───────── CORE STATE ─────────
 let blocks = [];
@@ -74,7 +78,6 @@ let debris = [];
 
 let score = 0;
 let combo = 0;
-let best = 0;
 
 let cameraY = 0;
 let camVel = 0;
@@ -85,6 +88,7 @@ const BASE_SPEED = 2.8;
 const PERFECT_TOL = 4;
 
 let hue = 160;
+let running = false;
 
 // ───────── INPUT ─────────
 window.addEventListener("keydown", e=>{
@@ -99,6 +103,7 @@ function init(){
   debris=[];
   score=0;
   combo=0;
+  hue=160;
 
   const base = {
     x: canvas.width/2 - 120,
@@ -108,11 +113,14 @@ function init(){
   };
 
   blocks.push(base);
-  spawn();
+
+  spawn(); // ✅ ALWAYS SAFE
 }
 
+// ───────── SPAWN ─────────
 function spawn(){
   const last = blocks[blocks.length-1];
+
   moving = {
     x: Math.random()<0.5 ? -200 : canvas.width+200,
     w: last.w,
@@ -122,8 +130,10 @@ function spawn(){
   };
 }
 
-// ───────── PLACE BLOCK ─────────
+// ───────── PLACE ─────────
 function place(){
+  if(!running || !moving) return;
+
   const last = blocks[blocks.length-1];
 
   const overlapStart = Math.max(moving.x, last.x);
@@ -137,18 +147,12 @@ function place(){
 
   const diff = Math.abs(moving.x - last.x);
 
-  // PERFECT
   if(diff < PERFECT_TOL){
     moving.x = last.x;
     combo++;
     shake += 6;
-    spawnShock(moving.x, moving.y);
-    spawnParticles(moving);
   } else {
     combo = 0;
-
-    // SPLIT DEBRIS
-    spawnDebris(moving, last);
     moving.w = overlap;
     moving.x = overlapStart;
   }
@@ -161,84 +165,22 @@ function place(){
   spawn();
 }
 
-// ───────── VFX SYSTEM ─────────
-function spawnParticles(b){
-  for(let i=0;i<18;i++){
-    particles.push({
-      x:b.x + Math.random()*b.w,
-      y:b.y,
-      vx:(Math.random()-0.5)*4,
-      vy:(Math.random()-1)*6,
-      life:1,
-      hue:b.color
-    });
-  }
-}
-
-function spawnShock(x,y){
-  particles.push({shock:true,x,y,r:10,life:1});
-}
-
-function spawnDebris(m,last){
-  const left = m.x < last.x ? m.x : last.x;
-  const right = m.x + m.w > last.x + last.w ? m.x+m.w : last.x+last.w;
-
-  if(m.x < last.x){
-    debris.push(makePiece(m.x, m.y, last.x - m.x, m.color, -3));
-  }
-  if(m.x+m.w > last.x+last.w){
-    debris.push(makePiece(last.x+last.w, m.y, (m.x+m.w)-(last.x+last.w), m.color, 3));
-  }
-}
-
-function makePiece(x,y,w,color,vx){
-  return {
-    x,y,w,h:BLOCK_H,
-    vx,
-    vy:-2,
-    rot:0,
-    vr:(Math.random()-0.5)*0.2,
-    color
-  };
-}
-
 // ───────── UPDATE ─────────
 function update(){
-  // camera spring
+
   const target = -score*BLOCK_H + canvas.height*0.6;
   camVel += (target - cameraY)*0.08;
-  camVel *= 0.7;
+  camVel *= 0.75;
   cameraY += camVel;
 
   shake *= 0.85;
 
   if(moving){
     moving.x += moving.dir * BASE_SPEED;
-    if(moving.x>canvas.width+100) moving.dir=-1;
-    if(moving.x<-200) moving.dir=1;
+
+    if(moving.x > canvas.width+100) moving.dir = -1;
+    if(moving.x < -200) moving.dir = 1;
   }
-
-  // particles
-  particles.forEach(p=>{
-    if(p.shock){
-      p.r += 8;
-      p.life -= 0.05;
-    } else {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.2;
-      p.life -= 0.03;
-    }
-  });
-  particles = particles.filter(p=>p.life>0);
-
-  // debris physics
-  debris.forEach(d=>{
-    d.x += d.vx;
-    d.y += d.vy;
-    d.vy += 0.3;
-    d.rot += d.vr;
-  });
 }
 
 // ───────── DRAW ─────────
@@ -249,86 +191,53 @@ function draw(){
   ctx.save();
   ctx.translate(0, shake*(Math.random()-0.5));
 
-  // GRID PARALLAX
-  ctx.globalAlpha=0.08;
-  ctx.strokeStyle="#e0ff4f";
-  for(let y=0;y<canvas.height;y+=50){
-    ctx.beginPath();
-    ctx.moveTo(0,y + cameraY*0.2%50);
-    ctx.lineTo(canvas.width,y + cameraY*0.2%50);
-    ctx.stroke();
-  }
-
-  // BLOCKS
-  blocks.forEach(b=>{
+  // blocks
+  for(const b of blocks){
     const y = b.y - cameraY;
 
-    ctx.shadowBlur = combo>3 ? 25 : 10;
+    ctx.shadowBlur = combo>2 ? 25 : 10;
     ctx.shadowColor = `hsl(${b.color},100%,60%)`;
 
-    const g = ctx.createLinearGradient(b.x,y,b.x+b.w,y+BLOCK_H);
-    g.addColorStop(0,`hsl(${b.color},90%,65%)`);
-    g.addColorStop(1,`hsl(${b.color+40},70%,40%)`);
-
-    ctx.fillStyle=g;
+    ctx.fillStyle = `hsl(${b.color},80%,55%)`;
     ctx.fillRect(b.x,y,b.w,BLOCK_H);
 
-    ctx.shadowBlur=0;
-  });
-
-  // MOVING
-  if(moving){
-    const y = moving.y - cameraY;
-    ctx.fillStyle=`hsl(${moving.color},80%,60%)`;
-    ctx.fillRect(moving.x,y,moving.w,BLOCK_H);
+    ctx.shadowBlur = 0;
   }
 
-  // DEBRIS
-  debris.forEach(d=>{
-    const y = d.y - cameraY;
-    ctx.save();
-    ctx.translate(d.x,y);
-    ctx.rotate(d.rot);
-    ctx.fillStyle=`hsl(${d.color},80%,55%)`;
-    ctx.fillRect(0,0,d.w,d.h);
-    ctx.restore();
-  });
-
-  // PARTICLES
-  particles.forEach(p=>{
-    if(p.shock){
-      ctx.strokeStyle=`rgba(224,255,79,${p.life})`;
-      ctx.beginPath();
-      ctx.arc(p.x-cameraY*0.1,p.y,p.r,0,Math.PI*2);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle=`hsla(${p.hue},100%,60%,${p.life})`;
-      ctx.fillRect(p.x,p.y,3,3);
-    }
-  });
+  // moving block
+  if(moving){
+    const y = moving.y - cameraY;
+    ctx.fillStyle = `hsl(${moving.color},80%,60%)`;
+    ctx.fillRect(moving.x,y,moving.w,BLOCK_H);
+  }
 
   ctx.restore();
 }
 
 // ───────── LOOP ─────────
 function loop(){
-  update();
-  draw();
+  if(running){
+    update();
+    draw();
+  }
   requestAnimationFrame(loop);
 }
 
 // ───────── GAME OVER ─────────
 function gameOver(){
-  alert("Game Over: "+score);
-  init();
+  running = false;
+  alert("Game Over: " + score);
 }
 
-// start
-document.getElementById("start-btn").onclick=()=>{
-  document.getElementById("start-screen").style.display="none";
+// ───────── START FIX ─────────
+document.getElementById("start-btn").onclick = () => {
+  document.getElementById("start-screen").style.display = "none";
   init();
+  running = true;
 };
 
+// 🔥 CRITICAL: FIRST INIT (so canvas is not empty black bug)
+init();
 loop();
 
 })();
