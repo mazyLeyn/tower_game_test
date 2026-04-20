@@ -12,7 +12,7 @@
   :root {
     --bg-day: #4facfe;
     --bg-night: #050508;
-    --accent: #ffcc00; /* İnşaat sarısı */
+    --accent: #ffcc00; 
     --text: #ffffff;
   }
 
@@ -109,7 +109,46 @@
 
 <script>
 (() => {
-  const BLOCK_H = 40; // Kat yüksekliği
+  // --- MÜZİK VE SES YÖNETİMİ ---
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let musicBuffer = null;
+  let musicSource = null;
+  let filterNode = audioCtx.createBiquadFilter();
+  filterNode.type = 'lowpass';
+  filterNode.frequency.value = 20000; // Başlangıçta net ses
+  filterNode.connect(audioCtx.destination);
+
+  // Müziği yükle
+  async function loadMusic() {
+    try {
+      const response = await fetch('GravityLettingGo.mp3');
+      const arrayBuffer = await response.arrayBuffer();
+      musicBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch (e) {
+      console.log("Müzik yüklenemedi, dosya yolunu kontrol edin.");
+    }
+  }
+  loadMusic();
+
+  function playMusic() {
+    if (!musicBuffer) return;
+    if (musicSource) musicSource.stop();
+    
+    musicSource = audioCtx.createBufferSource();
+    musicSource.buffer = musicBuffer;
+    musicSource.loop = true;
+    musicSource.connect(filterNode);
+    musicSource.start(0);
+  }
+
+  function setAudioFilter(isDead) {
+    // Ölünce 400Hz (boğuk), yaşarken 20000Hz (net)
+    const targetFreq = isDead ? 400 : 20000;
+    filterNode.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.2);
+  }
+
+  // --- OYUN PARAMETRELERİ ---
+  const BLOCK_H = 40;
   const BASE_SPEED = 3;
   const CAMERA_EASE = 0.08;
   
@@ -138,12 +177,12 @@
     blocks = []; score = 0;
     const bw = 200;
     const cx = canvas.width/2 - bw/2;
-    // Zemin katları
     for(let i=0; i<3; i++) {
       blocks.push({x: cx, w: bw, y: -i * BLOCK_H, type: 'base'});
     }
     targetCameraY = blocks[blocks.length-1].y - canvas.height*0.7;
     cameraY = targetCameraY;
+    setAudioFilter(false); // Sesi netleştir
     spawnMoving();
   }
 
@@ -157,11 +196,8 @@
     };
   }
 
-  // --- ARKA PLAN ÇİZİMİ (DÜNYADAN UZAYA) ---
   function drawBackground() {
     const heightFactor = Math.min(Math.abs(cameraY) / 8000, 1);
-    
-    // Renk Geçişi: Açık Mavi -> Koyu Lacivert -> Siyah
     const r = Math.floor(79 - (79 - 5) * heightFactor);
     const g = Math.floor(172 - (172 - 5) * heightFactor);
     const b = Math.floor(254 - (254 - 8) * heightFactor);
@@ -169,7 +205,6 @@
     ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Yıldızlar (Yükseldikçe belirir)
     if (heightFactor > 0.4) {
       ctx.globalAlpha = (heightFactor - 0.4) * 2;
       ctx.fillStyle = "white";
@@ -181,7 +216,6 @@
       ctx.globalAlpha = 1;
     }
 
-    // Bulutlar (Sadece aşağıdayken)
     if (heightFactor < 0.6) {
       ctx.fillStyle = "rgba(255,255,255, 0.2)";
       for(let i=0; i<4; i++) {
@@ -191,42 +225,27 @@
     }
   }
 
-  // --- BİNA BLOĞU ÇİZİMİ ---
   function drawBlock(b) {
     const sY = b.y - cameraY;
-    
-    // Ana Bina Gövdesi
-    ctx.fillStyle = "#444"; // Beton rengi
+    ctx.fillStyle = "#444"; 
     ctx.fillRect(b.x, sY, b.w, BLOCK_H - 2);
-
-    // Pencereler
-    const winW = 8;
-    const winH = 12;
-    const gap = 12;
-    ctx.fillStyle = score > 15 ? "#ADD8E6" : "#f1c40f"; // Gece sarı, gündüz mavi cam
-    
+    const winW = 8; const winH = 12; const gap = 12;
+    ctx.fillStyle = score > 15 ? "#ADD8E6" : "#f1c40f"; 
     for(let x = b.x + 10; x < b.x + b.w - 10; x += winW + gap) {
       ctx.fillRect(x, sY + 8, winW, winH);
       ctx.fillRect(x, sY + 24, winW, winH);
     }
-
-    // Yan Detaylar (Kirişler)
-    ctx.fillStyle = "#222";
-    ctx.fillRect(b.x, sY, 4, BLOCK_H);
-    ctx.fillRect(b.x + b.w - 4, sY, 4, BLOCK_H);
   }
 
   function loop() {
     drawBackground();
     cameraY += (targetCameraY - cameraY) * CAMERA_EASE;
-
     if (gameRunning && moving) {
       moving.x += moving.dir * (BASE_SPEED + (score/10));
       if(moving.x > canvas.width) moving.dir = -1;
       if(moving.x < -moving.w) moving.dir = 1;
       drawBlock(moving);
     }
-
     blocks.forEach(drawBlock);
     requestAnimationFrame(loop);
   }
@@ -238,12 +257,12 @@
 
     if(overlap <= 0) {
       gameRunning = false;
+      setAudioFilter(true); // Ölme sesi (boğuk)
       document.getElementById('gameover-screen').classList.remove('hidden');
       document.getElementById('gameover-score').textContent = `FLOORS: ${score}`;
       return;
     }
 
-    // Kusursuz yerleştirme bonusu
     if(Math.abs(moving.x - last.x) < 5) {
       moving.x = last.x;
       document.getElementById('perfect-flash').classList.add('pop');
@@ -254,7 +273,6 @@
     score++;
     document.getElementById('score-label').textContent = score;
     if(score > best) { best = score; document.getElementById('best-val').textContent = best; }
-    
     targetCameraY = blocks[blocks.length-1].y - canvas.height*0.6;
     spawnMoving();
   }
@@ -263,10 +281,14 @@
   window.addEventListener('keydown', e => e.code === 'Space' && place());
   
   document.getElementById('start-btn').onclick = () => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    playMusic();
     document.getElementById('start-screen').classList.add('hidden');
     initGame(); gameRunning = true;
   };
+
   document.getElementById('restart-btn').onclick = () => {
+    setAudioFilter(false); // Sesi netleştir
     document.getElementById('gameover-screen').classList.add('hidden');
     initGame(); gameRunning = true;
   };
@@ -276,4 +298,3 @@
 </script>
 </body>
 </html>
-
