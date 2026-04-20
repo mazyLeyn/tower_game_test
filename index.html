@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Sky Scraper: To Space</title>
+<title>Stack Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
 
@@ -228,7 +228,7 @@
   <div id="speed-badge">⚡ Speed Up!</div>
 
   <div class="screen" id="start-screen">
-    <div class="screen-title">Sky Scraper:<br>To Space</div>
+    <div class="screen-title">STACK<br>BUILDER</div>
     <div class="screen-sub">Tap or press <strong>SPACE</strong> to place blocks.<br>Build as high as you can.</div>
     <button class="btn" id="start-btn">START GAME</button>
   </div>
@@ -632,6 +632,320 @@
     });
   }
 
+  // ── AUDIO ENGINE (Web Audio API — sıfır dosya) ───────────────────
+  let audioCtx = null;
+
+  function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Tarayıcı suspend edebilir, kullanıcı etkileşimi sonrası resume et
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // Yardımcı: osc + gain zinciri, otomatik temizlik
+  function playTone({ type='sine', freq=440, freqEnd=null, vol=0.18,
+                      attack=0.005, decay=0.12, t=null }) {
+    try {
+      const ac  = getAudio();
+      const now = t ?? ac.currentTime;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (freqEnd !== null) osc.frequency.exponentialRampToValueAtTime(freqEnd, now + decay);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(vol, now + attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+      osc.start(now);
+      osc.stop(now + decay + 0.02);
+    } catch(e) {}
+  }
+
+  // Gürültü patlaması (blok yerleşme / chunk düşme)
+  function playNoise({ vol=0.12, decay=0.08, t=null } = {}) {
+    try {
+      const ac   = getAudio();
+      const now  = t ?? ac.currentTime;
+      const buf  = ac.createBuffer(1, ac.sampleRate * decay, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src  = ac.createBufferSource();
+      src.buffer = buf;
+      const gain = ac.createGain();
+      const filt = ac.createBiquadFilter();
+      filt.type      = 'bandpass';
+      filt.frequency.value = 800;
+      filt.Q.value   = 0.8;
+      src.connect(filt);
+      filt.connect(gain);
+      gain.connect(ac.destination);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+      src.start(now);
+      src.stop(now + decay + 0.01);
+    } catch(e) {}
+  }
+
+  // ── SES OLAYLARI ─────────────────────────────────────────────────
+
+  // Normal blok yerleşme: kısa tok "klik" + ince ton
+  function sfxPlace(blockWidth) {
+    const pitch = 180 + (blockWidth / 260) * 120; // geniş blok → daha alçak
+    playNoise({ vol: 0.10, decay: 0.06 });
+    playTone({ type: 'triangle', freq: pitch, freqEnd: pitch * 0.7,
+               vol: 0.10, attack: 0.003, decay: 0.09 });
+  }
+
+  // Perfect vuruş: iki katmanlı parlak akord
+  function sfxPerfect(combo) {
+    const base  = 520 + combo * 40;
+    const ac    = getAudio();
+    const now   = ac.currentTime;
+    // Temel ton
+    playTone({ type: 'sine', freq: base,        freqEnd: base * 1.05,
+               vol: 0.20, attack: 0.004, decay: 0.22, t: now });
+    // Beşli üst
+    playTone({ type: 'sine', freq: base * 1.5,  freqEnd: base * 1.5,
+               vol: 0.10, attack: 0.008, decay: 0.18, t: now });
+    // Parlak harmonik
+    playTone({ type: 'triangle', freq: base * 2, freqEnd: base * 1.8,
+               vol: 0.06, attack: 0.01, decay: 0.14, t: now });
+    // Tiz ping
+    playTone({ type: 'sine', freq: base * 4,    freqEnd: base * 3,
+               vol: 0.04, attack: 0.002, decay: 0.10, t: now });
+  }
+
+  // Chunk düşme: kısa "ploink" aşağı sweep
+  function sfxChunk() {
+    playTone({ type: 'sawtooth', freq: 260, freqEnd: 80,
+               vol: 0.08, attack: 0.003, decay: 0.14 });
+    playNoise({ vol: 0.06, decay: 0.05 });
+  }
+
+  // Hız artışı: kısa yukarı arpej
+  function sfxSpeedUp() {
+    const ac  = getAudio();
+    const now = ac.currentTime;
+    [0, 0.06, 0.12].forEach((dt, i) => {
+      playTone({ type: 'square', freq: 320 + i * 120, freqEnd: 360 + i * 120,
+                 vol: 0.07, attack: 0.005, decay: 0.08, t: now + dt });
+    });
+  }
+
+  // Oyun sonu: dramatik aşağı arpej + gürültü
+  function sfxGameOver() {
+    const ac  = getAudio();
+    const now = ac.currentTime;
+    playNoise({ vol: 0.18, decay: 0.25, t: now });
+    [0, 0.08, 0.18, 0.30].forEach((dt, i) => {
+      playTone({ type: 'sawtooth', freq: 400 - i * 70, freqEnd: 200 - i * 30,
+                 vol: 0.14 - i * 0.02, attack: 0.005, decay: 0.18, t: now + dt });
+    });
+  }
+
+  // ── MÜZİK MOTORU — 16 adımlı step sequencer ─────────────────────
+  // Tamamen Web Audio API sentezi. Sıfır dosya.
+  // Yapı: Kick | Snare | HiHat | Bass line | Arp lead
+  // BPM score arttıkça hafifçe hızlanır (70→110 arası)
+
+  let musicRunning  = false;
+  let musicStep     = 0;       // 0–15
+  let nextStepTime  = 0;       // AudioContext zamanı
+  let scheduleAhead = 0.10;    // kaç saniye önceden schedule et
+  let scheduleTimer = null;
+  let masterGain    = null;
+
+  // ─── TEMEL BPM ───
+  function getBPM() { return Math.min(70 + score * 0.8, 110); }
+  function stepSec() { return 60 / getBPM() / 4; } // 16th note
+
+  // ─── MASTER GAIN (fade in/out için) ───
+  function getMaster() {
+    if (masterGain) return masterGain;
+    const ac = getAudio();
+    masterGain = ac.createGain();
+    masterGain.gain.value = 0;
+    masterGain.connect(ac.destination);
+    return masterGain;
+  }
+
+  // ─── TEMEL YAPI TAŞLARI ───
+
+  function beatKick(t) {
+    try {
+      const ac = getAudio();
+      const mg = getMaster();
+      // Body — sine sweep aşağı
+      const osc = ac.createOscillator();
+      const g   = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, t);
+      osc.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+      g.gain.setValueAtTime(0.9, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      osc.connect(g); g.connect(mg);
+      osc.start(t); osc.stop(t + 0.30);
+      // Click transient
+      const n   = ac.createOscillator();
+      const ng  = ac.createGain();
+      n.type = 'square'; n.frequency.value = 80;
+      ng.gain.setValueAtTime(0.3, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+      n.connect(ng); ng.connect(mg);
+      n.start(t); n.stop(t + 0.02);
+    } catch(e) {}
+  }
+
+  function beatSnare(t) {
+    try {
+      const ac = getAudio();
+      const mg = getMaster();
+      // Tone body
+      const osc = ac.createOscillator();
+      const og  = ac.createGain();
+      osc.type = 'triangle'; osc.frequency.value = 200;
+      og.gain.setValueAtTime(0.4, t);
+      og.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      osc.connect(og); og.connect(mg);
+      osc.start(t); osc.stop(t + 0.15);
+      // Noise body
+      const bufLen = Math.floor(ac.sampleRate * 0.18);
+      const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const filt = ac.createBiquadFilter();
+      filt.type = 'highpass'; filt.frequency.value = 1200;
+      const ng = ac.createGain();
+      ng.gain.setValueAtTime(0.5, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      src.connect(filt); filt.connect(ng); ng.connect(mg);
+      src.start(t); src.stop(t + 0.19);
+    } catch(e) {}
+  }
+
+  function beatHiHat(t, open = false) {
+    try {
+      const ac   = getAudio();
+      const mg   = getMaster();
+      const dur  = open ? 0.14 : 0.045;
+      const bufLen = Math.floor(ac.sampleRate * dur);
+      const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+      const src  = ac.createBufferSource();
+      src.buffer = buf;
+      const filt = ac.createBiquadFilter();
+      filt.type = 'highpass'; filt.frequency.value = open ? 6000 : 8000;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(open ? 0.20 : 0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(filt); filt.connect(g); g.connect(mg);
+      src.start(t); src.stop(t + dur + 0.01);
+    } catch(e) {}
+  }
+
+  // Bass synth — sawtooth + lowpass filter, pentatonik dizi
+  const BASS_NOTES = [55, 55, 73.4, 55, 65.4, 55, 49, 55]; // A1, D2 bölgesi Hz
+  function beatBass(t, step) {
+    try {
+      const ac   = getAudio();
+      const mg   = getMaster();
+      const freq = BASS_NOTES[step % BASS_NOTES.length];
+      const osc  = ac.createOscillator();
+      const filt = ac.createBiquadFilter();
+      const g    = ac.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(600, t);
+      filt.frequency.exponentialRampToValueAtTime(200, t + 0.18);
+      filt.Q.value = 4;
+      g.gain.setValueAtTime(0.38, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      osc.connect(filt); filt.connect(g); g.connect(mg);
+      osc.start(t); osc.stop(t + 0.24);
+    } catch(e) {}
+  }
+
+  // Arp lead — pentatonik Mi minör, 16th note melodisi
+  const ARP_SCALE = [329.6, 369.9, 392, 440, 493.8, 523.2, 587.3, 659.2];
+  const ARP_PATTERN = [0,null,2,null,4,2,null,5,null,3,null,6,4,null,2,null];
+  function beatArp(t, step) {
+    const idx = ARP_PATTERN[step % 16];
+    if (idx === null) return;
+    try {
+      const ac   = getAudio();
+      const mg   = getMaster();
+      const freq = ARP_SCALE[idx % ARP_SCALE.length];
+      const osc  = ac.createOscillator();
+      const g    = ac.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.07, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      osc.connect(g); g.connect(mg);
+      osc.start(t); osc.stop(t + 0.10);
+    } catch(e) {}
+  }
+
+  // ─── 16-ADIM PATTERN ───
+  // K=kick  S=snare  H=hihat(closed)  O=hihat(open)
+  // step:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+  const PAT_KICK  = [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0];
+  const PAT_SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1];
+  const PAT_HHAT  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
+  const PAT_OPEN  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+  const PAT_BASS  = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0];
+
+  function scheduleStep(t, step) {
+    if (PAT_KICK[step])  beatKick(t);
+    if (PAT_SNARE[step]) beatSnare(t);
+    if (PAT_OPEN[step])  beatHiHat(t, true);
+    else if (PAT_HHAT[step]) beatHiHat(t, false);
+    if (PAT_BASS[step])  beatBass(t, step);
+    beatArp(t, step);
+  }
+
+  function schedulerTick() {
+    if (!musicRunning) return;
+    const ac = getAudio();
+    while (nextStepTime < ac.currentTime + scheduleAhead) {
+      scheduleStep(nextStepTime, musicStep);
+      musicStep = (musicStep + 1) % 16;
+      nextStepTime += stepSec();
+    }
+    scheduleTimer = setTimeout(schedulerTick, 25); // 25ms polling
+  }
+
+  function musicStart() {
+    if (musicRunning) return;
+    const ac = getAudio();
+    musicRunning  = true;
+    musicStep     = 0;
+    nextStepTime  = ac.currentTime + 0.05;
+    // Fade in master
+    const mg = getMaster();
+    mg.gain.cancelScheduledValues(ac.currentTime);
+    mg.gain.setValueAtTime(mg.gain.value, ac.currentTime);
+    mg.gain.linearRampToValueAtTime(0.72, ac.currentTime + 0.8);
+    schedulerTick();
+  }
+
+  function musicStop() {
+    musicRunning = false;
+    clearTimeout(scheduleTimer);
+    if (!audioCtx || !masterGain) return;
+    const ac = audioCtx;
+    masterGain.gain.cancelScheduledValues(ac.currentTime);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, ac.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
+  }
+
   // ── SCREEN SHAKE ─────────────────────────────────────────────────
   function triggerShake(magnitude) {
     screenShake.mag = magnitude;
@@ -752,12 +1066,12 @@
     } else {
       // Spawn falling chunk(s)
       if (moving.x < last.x) {
-        // left chunk falls
         spawnFallingChunk(moving.x, moving.y, last.x - moving.x, moving.color, 'left');
+        sfxChunk();
       }
       if (moving.x + moving.w > last.x + last.w) {
-        // right chunk falls
         spawnFallingChunk(last.x + last.w, moving.y, (moving.x + moving.w) - (last.x + last.w), moving.color, 'right');
+        sfxChunk();
       }
       moving.w = overlap;
       moving.x = overlapStart;
@@ -766,10 +1080,12 @@
 
     if (isPerfect) {
       triggerPerfect();
+      sfxPerfect(comboCount);
       spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
       spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
       triggerShake(3 + comboCount * 0.8);
     } else {
+      sfxPlace(moving.w);
       triggerShake(1.5);
     }
 
@@ -778,7 +1094,7 @@
     scoreEl.textContent = score;
     if (score > best) { best = score; bestEl.textContent = best; }
 
-    if (score % 5 === 0) showSpeedBadge();
+    if (score % 5 === 0) { showSpeedBadge(); sfxSpeedUp(); }
 
     updateComboUI();
 
@@ -806,6 +1122,8 @@
   // ── END GAME ─────────────────────────────────────────────────────
   function endGame() {
     gameRunning = false;
+    musicStop();
+    sfxGameOver();
     goScore.textContent = `SCORE — ${score}`;
     goScreen.classList.remove('hidden');
   }
@@ -878,6 +1196,8 @@
     goScreen.classList.add('hidden');
     initGame();
     gameRunning = true;
+    musicStop();          // temizle
+    musicStart();         // yeni oyunla başlat
     if (animId) cancelAnimationFrame(animId);
     loop();
   }
