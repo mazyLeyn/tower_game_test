@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Sky Scraper Builder</title>
+<title>Sky Scraper Builder - Music Fix</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
 
@@ -107,44 +107,34 @@
   </div>
 </div>
 
+<audio id="bgMusic" src="music.mp3" preload="auto"></audio>
+
 <script>
 (() => {
-  // --- MÜZİK VE SES YÖNETİMİ ---
+  // --- SES SİSTEMİ ---
+  const audio = document.getElementById('bgMusic');
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  let musicBuffer = null;
-  let musicSource = null;
-  let filterNode = audioCtx.createBiquadFilter();
-  filterNode.type = 'lowpass';
-  filterNode.frequency.value = 20000; // Başlangıçta net ses
-  filterNode.connect(audioCtx.destination);
+  const source = audioCtx.createMediaElementSource(audio);
+  const filter = audioCtx.createBiquadFilter();
+  
+  filter.type = 'lowpass';
+  filter.frequency.value = 22000;
+  
+  source.connect(filter);
+  filter.connect(audioCtx.destination);
 
-  // Müziği yükle
-  async function loadMusic() {
-    try {
-      const response = await fetch('GravityLettingGo.mp3');
-      const arrayBuffer = await response.arrayBuffer();
-      musicBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    } catch (e) {
-      console.log("Müzik yüklenemedi, dosya yolunu kontrol edin.");
+  // Kesintisiz döngü için (0.1sn kala başa sar)
+  audio.addEventListener('timeupdate', function() {
+    var buffer = 0.1;
+    if(this.currentTime > this.duration - buffer){
+        this.currentTime = 0;
+        this.play();
     }
-  }
-  loadMusic();
+  });
 
-  function playMusic() {
-    if (!musicBuffer) return;
-    if (musicSource) musicSource.stop();
-    
-    musicSource = audioCtx.createBufferSource();
-    musicSource.buffer = musicBuffer;
-    musicSource.loop = true;
-    musicSource.connect(filterNode);
-    musicSource.start(0);
-  }
-
-  function setAudioFilter(isDead) {
-    // Ölünce 400Hz (boğuk), yaşarken 20000Hz (net)
-    const targetFreq = isDead ? 400 : 20000;
-    filterNode.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.2);
+  function setFilter(isDead) {
+    const freq = isDead ? 450 : 22000;
+    filter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
   }
 
   // --- OYUN PARAMETRELERİ ---
@@ -177,12 +167,10 @@
     blocks = []; score = 0;
     const bw = 200;
     const cx = canvas.width/2 - bw/2;
-    for(let i=0; i<3; i++) {
-      blocks.push({x: cx, w: bw, y: -i * BLOCK_H, type: 'base'});
-    }
+    for(let i=0; i<3; i++) blocks.push({x: cx, w: bw, y: -i * BLOCK_H, type: 'base'});
     targetCameraY = blocks[blocks.length-1].y - canvas.height*0.7;
     cameraY = targetCameraY;
-    setAudioFilter(false); // Sesi netleştir
+    setFilter(false); 
     spawnMoving();
   }
 
@@ -201,7 +189,6 @@
     const r = Math.floor(79 - (79 - 5) * heightFactor);
     const g = Math.floor(172 - (172 - 5) * heightFactor);
     const b = Math.floor(254 - (254 - 8) * heightFactor);
-    
     ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -215,7 +202,6 @@
       });
       ctx.globalAlpha = 1;
     }
-
     if (heightFactor < 0.6) {
       ctx.fillStyle = "rgba(255,255,255, 0.2)";
       for(let i=0; i<4; i++) {
@@ -257,7 +243,7 @@
 
     if(overlap <= 0) {
       gameRunning = false;
-      setAudioFilter(true); // Ölme sesi (boğuk)
+      setFilter(true);
       document.getElementById('gameover-screen').classList.remove('hidden');
       document.getElementById('gameover-score').textContent = `FLOORS: ${score}`;
       return;
@@ -277,22 +263,21 @@
     spawnMoving();
   }
 
-  canvas.addEventListener('pointerdown', place);
-  window.addEventListener('keydown', e => e.code === 'Space' && place());
-  
   document.getElementById('start-btn').onclick = () => {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    playMusic();
+    audioCtx.resume();
+    audio.play();
     document.getElementById('start-screen').classList.add('hidden');
     initGame(); gameRunning = true;
   };
 
   document.getElementById('restart-btn').onclick = () => {
-    setAudioFilter(false); // Sesi netleştir
+    setFilter(false);
     document.getElementById('gameover-screen').classList.add('hidden');
     initGame(); gameRunning = true;
   };
 
+  canvas.addEventListener('pointerdown', place);
+  window.addEventListener('keydown', e => e.code === 'Space' && place());
   loop();
 })();
 </script>
