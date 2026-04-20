@@ -95,23 +95,34 @@ const goScore = document.getElementById('gameover-score');
 
 /* ───────── AUDIO ───────── */
 const music = document.getElementById('bg-music');
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const source = audioCtx.createMediaElementSource(music);
+let audioCtx = null;
+let source = null;
+let analyser = null;
+let lowPass = null;
+let dataArray = null;
 
-const analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-const lowPass = audioCtx.createBiquadFilter();
-lowPass.type = "lowpass";
+  source = audioCtx.createMediaElementSource(music);
 
-source.connect(analyser);
-analyser.connect(lowPass);
-lowPass.connect(audioCtx.destination);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
 
-const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.value = 20000;
+
+  source.connect(analyser);
+  analyser.connect(lowPass);
+  lowPass.connect(audioCtx.destination);
+
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+}
 
 /* NOTE SYNTH */
 function playNote(i) {
+  if (!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
 
@@ -244,9 +255,13 @@ function flash() {
 
 /* ───────── UPDATE ───────── */
 function update() {
+  if (!running) return;
+  let bass = 0;
 
-  analyser.getByteFrequencyData(dataArray);
-  const bass = dataArray[1] / 255;
+  if (analyser && dataArray) {
+    analyser.getByteFrequencyData(dataArray);
+    bass = dataArray[1] / 255;
+  }
 
   /* CAMERA LERP */
   cameraY += (targetCameraY - cameraY) * 0.1;
@@ -284,13 +299,15 @@ function update() {
 
 /* ───────── LOOP ───────── */
 function loop() {
-  if (!running) return;
   update();
   anim = requestAnimationFrame(loop);
 }
 
 /* ───────── GAME OVER ───────── */
 function endGame() {
+  if (lowPass && audioCtx) {
+  lowPass.frequency.setTargetAtTime(200, audioCtx.currentTime, 0.05);
+}
   running = false;
 
   shake = 20;
@@ -298,9 +315,6 @@ function endGame() {
   goScreen.classList.remove('hidden');
   goScore.textContent = `SCORE — ${score}`;
 
-  /* HEAVY LOWPASS */
-  lowPass.frequency.setTargetAtTime(200, audioCtx.currentTime, 0.05);
-}
 
 /* ───────── START ───────── */
 function start() {
@@ -308,14 +322,19 @@ function start() {
   goScreen.classList.add('hidden');
 
   init();
-  running = true;
+
+  // 🔥 SADECE BURADA OLUŞTUR
+  if (!audioCtx) initAudio();
 
   audioCtx.resume();
+
   music.currentTime = 0;
   music.play();
 
+  // normal ses
   lowPass.frequency.setTargetAtTime(20000, audioCtx.currentTime, 0.1);
 
+  running = true;
   loop();
 }
 
