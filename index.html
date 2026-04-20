@@ -9,13 +9,42 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── THEMES ── */
   :root {
     --bg: #0a0a0f;
     --surface: #12121a;
+    --surface2: #1a1a28;
     --accent: #e0ff4f;
+    --accent-rgb: 224,255,79;
     --text: #f0f0f8;
     --muted: #4a4a6a;
     --danger: #ff4f6e;
+    --grid-color: rgba(224,255,79,0.035);
+  }
+  body[data-theme="cyber"] {
+    --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a28;
+    --accent: #e0ff4f; --accent-rgb: 224,255,79;
+    --grid-color: rgba(224,255,79,0.035);
+  }
+  body[data-theme="neon"] {
+    --bg: #080010; --surface: #110020; --surface2: #1a0030;
+    --accent: #bf5fff; --accent-rgb: 191,95,255;
+    --grid-color: rgba(191,95,255,0.04);
+  }
+  body[data-theme="ice"] {
+    --bg: #050d14; --surface: #0a1825; --surface2: #0f2030;
+    --accent: #4ff0ff; --accent-rgb: 79,240,255;
+    --grid-color: rgba(79,240,255,0.035);
+  }
+  body[data-theme="fire"] {
+    --bg: #0f0500; --surface: #1a0a00; --surface2: #281000;
+    --accent: #ff6b1a; --accent-rgb: 255,107,26;
+    --grid-color: rgba(255,107,26,0.04);
+  }
+  body[data-theme="matrix"] {
+    --bg: #000a00; --surface: #001200; --surface2: #001a00;
+    --accent: #00ff41; --accent-rgb: 0,255,65;
+    --grid-color: rgba(0,255,65,0.04);
   }
 
   html, body {
@@ -26,179 +55,135 @@
     color: var(--text);
     touch-action: none;
     user-select: none;
+    transition: background 0.5s;
   }
 
   #app {
     position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow: hidden;
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; overflow: hidden;
   }
 
   /* ── HUD ── */
   #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
+    position: fixed; top: 0; left: 0; right: 0;
     z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    display: flex; justify-content: space-between; align-items: flex-start;
     padding: 20px 28px 0;
     pointer-events: none;
   }
-
   #score-label {
     font-family: 'Bebas Neue', cursive;
     font-size: clamp(56px, 12vw, 96px);
-    line-height: 1;
-    color: var(--accent);
-    text-shadow: 0 0 40px rgba(224,255,79,.35);
-    letter-spacing: 2px;
-    transition: text-shadow 0.3s;
+    line-height: 1; color: var(--accent);
+    text-shadow: 0 0 40px rgba(var(--accent-rgb),.35);
+    letter-spacing: 2px; transition: text-shadow 0.3s;
   }
   #score-label.combo-glow {
-    text-shadow: 0 0 60px rgba(224,255,79,.9), 0 0 100px rgba(224,255,79,.4);
+    text-shadow: 0 0 60px rgba(var(--accent-rgb),.9), 0 0 100px rgba(var(--accent-rgb),.4);
   }
-
-  #best-label {
-    font-size: 11px;
-    color: var(--muted);
-    text-align: right;
-    line-height: 1.6;
-  }
+  #best-label { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.6; }
   #best-label span { color: var(--accent); font-size: 20px; display: block; }
+
+  /* Settings gear button */
+  #settings-btn {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+    z-index: 120; background: none; border: 1px solid rgba(var(--accent-rgb),.2);
+    color: var(--muted); cursor: pointer; border-radius: 50%;
+    width: 34px; height: 34px; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s; pointer-events: all;
+  }
+  #settings-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateX(-50%) rotate(45deg); }
 
   /* ── COMBO HUD ── */
   #combo-hud {
-    position: fixed;
-    top: 0; left: 50%; transform: translateX(-50%);
-    z-index: 110;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 18px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    z-index: 110; display: flex; flex-direction: column; align-items: center;
+    padding-top: 60px; pointer-events: none; opacity: 0; transition: opacity 0.3s;
   }
   #combo-hud.visible { opacity: 1; }
   #combo-count {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(28px, 6vw, 46px);
-    letter-spacing: 4px;
-    color: var(--accent);
-    text-shadow: 0 0 20px rgba(224,255,79,.8);
-    line-height: 1;
+    font-family: 'Bebas Neue', cursive; font-size: clamp(28px, 6vw, 46px);
+    letter-spacing: 4px; color: var(--accent);
+    text-shadow: 0 0 20px rgba(var(--accent-rgb),.8); line-height: 1;
   }
-  #combo-label {
-    font-size: 9px;
-    letter-spacing: 0.25em;
-    color: rgba(224,255,79,.6);
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
+  #combo-label { font-size: 9px; letter-spacing: 0.25em; color: rgba(var(--accent-rgb),.6); text-transform: uppercase; margin-top: 2px; }
 
   /* ── CANVAS ── */
-  #canvas {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-  }
+  #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-  /* ── OVERLAY SCREENS ── */
+  /* ── SCREENS ── */
   .screen {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(10,10,15,.92);
-    backdrop-filter: blur(12px);
-    gap: 20px;
-    transition: opacity .4s ease;
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(10,10,15,.93); backdrop-filter: blur(14px);
+    gap: 0; transition: opacity .4s ease;
   }
   .screen.hidden { opacity: 0; pointer-events: none; }
 
   .screen-title {
     font-family: 'Bebas Neue', cursive;
-    font-size: clamp(52px, 14vw, 110px);
-    color: var(--accent);
-    letter-spacing: 4px;
-    text-shadow: 0 0 60px rgba(224,255,79,.4);
-    line-height: 1;
+    font-size: clamp(64px, 18vw, 130px);
+    color: var(--accent); letter-spacing: 4px;
+    text-shadow: 0 0 80px rgba(var(--accent-rgb),.5), 0 0 160px rgba(var(--accent-rgb),.2);
+    line-height: 0.9; text-align: center; margin-bottom: 10px;
+  }
+  .screen-title .sub-title {
+    display: block; font-size: clamp(14px, 3vw, 22px);
+    letter-spacing: 10px; color: rgba(var(--accent-rgb),.5);
+    text-shadow: none; margin-top: 4px;
   }
 
   .screen-sub {
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    text-align: center;
-    line-height: 2;
-    max-width: 280px;
+    font-size: 11px; color: var(--muted); letter-spacing: .12em;
+    text-transform: uppercase; text-align: center; line-height: 2.2;
+    max-width: 260px; margin-bottom: 8px;
   }
 
+  /* ── BUTTONS ── */
   .btn {
-    margin-top: 10px;
-    padding: 14px 42px;
-    background: var(--accent);
-    color: #0a0a0f;
-    border: none;
-    cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .15em;
-    text-transform: uppercase;
+    padding: 13px 38px; background: var(--accent); color: #0a0a0f;
+    border: none; cursor: pointer; font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
     clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
-    transition: transform .15s, box-shadow .15s;
-    outline: none;
+    transition: transform .15s, box-shadow .15s; outline: none; margin-top: 8px;
   }
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(224,255,79,.35); }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(var(--accent-rgb),.4); }
   .btn:active { transform: translateY(0); }
-
-  #gameover-score {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(28px, 6vw, 44px);
-    color: var(--text);
-    letter-spacing: 2px;
+  .btn-ghost {
+    background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,.1);
+    clip-path: none; border-radius: 3px; font-size: 11px; padding: 10px 28px;
   }
+  .btn-ghost:hover { color: var(--accent); border-color: rgba(var(--accent-rgb),.4); box-shadow: none; }
+
+  /* ── GAME OVER SCREEN extras ── */
+  #gameover-score {
+    font-family: 'Bebas Neue', cursive; font-size: clamp(32px, 7vw, 52px);
+    color: var(--text); letter-spacing: 3px; margin: 6px 0 2px;
+  }
+  #gameover-best {
+    font-size: 10px; color: var(--muted); letter-spacing: .15em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  #gameover-best span { color: var(--accent); }
+  .btn-row { display: flex; gap: 10px; margin-top: 4px; }
 
   /* ── SPEED BADGE ── */
   #speed-badge {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    font-size: 10px;
-    letter-spacing: .15em;
-    color: var(--muted);
-    text-transform: uppercase;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .5s;
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 100; font-size: 10px; letter-spacing: .15em; color: var(--muted);
+    text-transform: uppercase; pointer-events: none; opacity: 0; transition: opacity .5s;
   }
   #speed-badge.show { opacity: 1; }
 
   /* ── PERFECT FLASH ── */
   #perfect-flash {
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-    font-family: 'Bebas Neue', cursive;
-    font-size: 48px;
-    color: var(--accent);
-    letter-spacing: 6px;
-    pointer-events: none;
-    z-index: 300;
-    opacity: 0;
-    text-shadow: 0 0 30px rgba(224,255,79,.7);
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-family: 'Bebas Neue', cursive; font-size: 48px; color: var(--accent);
+    letter-spacing: 6px; pointer-events: none; z-index: 300; opacity: 0;
+    text-shadow: 0 0 30px rgba(var(--accent-rgb),.7);
   }
   @keyframes perfectPop {
     0%   { opacity:0; transform:translate(-50%,-50%) scale(.6); }
@@ -207,6 +192,93 @@
     100% { opacity:0; transform:translate(-50%,-70%) scale(.9); }
   }
   #perfect-flash.pop { animation: perfectPop .9s ease forwards; }
+
+  /* ── SETTINGS PANEL ── */
+  #settings-panel {
+    position: fixed; inset: 0; z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(5,5,10,.88); backdrop-filter: blur(18px);
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  #settings-panel.open { opacity: 1; pointer-events: all; }
+
+  .settings-card {
+    background: var(--surface); border: 1px solid rgba(var(--accent-rgb),.12);
+    border-radius: 16px; padding: 28px 28px 22px;
+    width: min(380px, 90vw); max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 0 60px rgba(var(--accent-rgb),.08);
+  }
+  .settings-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 22px;
+  }
+  .settings-title {
+    font-family: 'Bebas Neue', cursive; font-size: 28px;
+    color: var(--accent); letter-spacing: 3px;
+  }
+  .settings-close {
+    background: none; border: none; color: var(--muted); font-size: 20px;
+    cursor: pointer; padding: 4px 8px; transition: color .2s;
+  }
+  .settings-close:hover { color: var(--text); }
+
+  .settings-section { margin-bottom: 20px; }
+  .settings-section-label {
+    font-size: 9px; letter-spacing: .2em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 10px; display: block;
+  }
+
+  /* Slider */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; gap: 12px;
+  }
+  .setting-row label { font-size: 11px; color: var(--text); letter-spacing: .05em; flex: 1; }
+  .setting-row .val { font-size: 11px; color: var(--accent); min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    flex: 2; -webkit-appearance: none; appearance: none;
+    height: 3px; background: var(--surface2); border-radius: 2px; outline: none;
+    accent-color: var(--accent);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 8px rgba(var(--accent-rgb),.6);
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .toggle-row label { font-size: 11px; color: var(--text); }
+  .toggle {
+    position: relative; width: 38px; height: 20px;
+    background: var(--surface2); border-radius: 10px;
+    cursor: pointer; transition: background .2s; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; background: var(--muted);
+    border-radius: 50%; transition: transform .2s, background .2s;
+  }
+  .toggle.on::after { transform: translateX(18px); background: #0a0a0f; }
+
+  /* Theme swatches */
+  .theme-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.active { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,.3); }
+
+  /* divider */
+  .s-divider { height: 1px; background: rgba(255,255,255,.05); margin: 4px 0 18px; }
 </style>
 </head>
 <body>
@@ -216,6 +288,8 @@
     <div id="score-label">0</div>
     <div id="best-label">BEST<span id="best-val">0</span></div>
   </div>
+
+  <button id="settings-btn" title="Settings">⚙</button>
 
   <!-- Combo HUD -->
   <div id="combo-hud">
@@ -227,17 +301,91 @@
   <div id="perfect-flash">PERFECT</div>
   <div id="speed-badge">⚡ Speed Up!</div>
 
-  <div class="screen" id="start-screen">
-    <div class="screen-title">Sky Scraper:<br>To Space</div>
-    <div class="screen-sub">Tap or press <strong>SPACE</strong> to place blocks.<br>Build as high as you can.</div>
-    <button class="btn" id="start-btn">START GAME</button>
+  <!-- ── MENU / START screen (also shown after game over) ── -->
+  <div class="screen" id="menu-screen">
+    <div class="screen-title">
+      Sky Scraper:<br>To Space
+      <span class="sub-title">ARCADE</span>
+    </div>
+    <div class="screen-sub" id="menu-sub">Tap or press SPACE to place blocks.<br>Build as high as you can.</div>
+    <button class="btn" id="start-btn">▶ &nbsp;START GAME</button>
+    <button class="btn btn-ghost" id="menu-settings-btn" style="margin-top:10px">⚙ &nbsp;SETTINGS</button>
+    <div id="menu-best-row" style="margin-top:18px;font-size:10px;color:var(--muted);letter-spacing:.15em;text-align:center;display:none">
+      BEST &nbsp;<span id="menu-best-val" style="color:var(--accent)">0</span>
+    </div>
   </div>
 
-  <div class="screen hidden" id="gameover-screen">
-    <div class="screen-title">GAME<br>OVER</div>
-    <div id="gameover-score">SCORE — 0</div>
-    <div class="screen-sub">Blocks slipped — tower collapsed.</div>
-    <button class="btn" id="restart-btn">TRY AGAIN</button>
+  <!-- ── SETTINGS PANEL ── -->
+  <div id="settings-panel">
+    <div class="settings-card">
+      <div class="settings-header">
+        <span class="settings-title">SETTINGS</span>
+        <button class="settings-close" id="settings-close">✕</button>
+      </div>
+
+      <!-- MUSIC -->
+      <div class="settings-section">
+        <span class="settings-section-label">🎵 Music</span>
+        <div class="toggle-row">
+          <label>Background Music</label>
+          <div class="toggle on" id="tog-music" data-key="music"></div>
+        </div>
+        <div class="setting-row">
+          <label>Music Volume</label>
+          <input type="range" id="sl-music-vol" min="0" max="100" value="72">
+          <span class="val" id="sl-music-vol-val">72</span>
+        </div>
+      </div>
+      <div class="s-divider"></div>
+
+      <!-- SFX -->
+      <div class="settings-section">
+        <span class="settings-section-label">🔊 Sound Effects</span>
+        <div class="toggle-row">
+          <label>Sound Effects</label>
+          <div class="toggle on" id="tog-sfx" data-key="sfx"></div>
+        </div>
+        <div class="setting-row">
+          <label>SFX Volume</label>
+          <input type="range" id="sl-sfx-vol" min="0" max="100" value="80">
+          <span class="val" id="sl-sfx-vol-val">80</span>
+        </div>
+      </div>
+      <div class="s-divider"></div>
+
+      <!-- VISUALS -->
+      <div class="settings-section">
+        <span class="settings-section-label">✨ Visuals</span>
+        <div class="toggle-row">
+          <label>Particles</label>
+          <div class="toggle on" id="tog-particles" data-key="particles"></div>
+        </div>
+        <div class="toggle-row">
+          <label>Screen Shake</label>
+          <div class="toggle on" id="tog-shake" data-key="shake"></div>
+        </div>
+        <div class="setting-row">
+          <label>Grid Opacity</label>
+          <input type="range" id="sl-grid" min="0" max="100" value="50">
+          <span class="val" id="sl-grid-val">50</span>
+        </div>
+      </div>
+      <div class="s-divider"></div>
+
+      <!-- THEME -->
+      <div class="settings-section">
+        <span class="settings-section-label">🎨 Color Theme</span>
+        <div class="theme-swatches">
+          <div class="swatch active" data-theme="cyber"  style="background:linear-gradient(135deg,#0a0a0f,#2a2a00)" title="Cyber Yellow">⚡</div>
+          <div class="swatch"        data-theme="neon"   style="background:linear-gradient(135deg,#080010,#2a0040)" title="Neon Purple">💜</div>
+          <div class="swatch"        data-theme="ice"    style="background:linear-gradient(135deg,#050d14,#003040)" title="Ice Blue">❄️</div>
+          <div class="swatch"        data-theme="fire"   style="background:linear-gradient(135deg,#0f0500,#3a1000)" title="Fire Orange">🔥</div>
+          <div class="swatch"        data-theme="matrix" style="background:linear-gradient(135deg,#000a00,#002000)" title="Matrix Green">👾</div>
+        </div>
+      </div>
+
+      <button class="btn" id="settings-play-btn" style="width:100%;margin-top:8px">CLOSE</button>
+    </div>
   </div>
 
 </div>
@@ -253,6 +401,18 @@
   const GROUND_BLOCKS  = 4;
   const BG_COLOR       = '#0a0a0f';
 
+  // ── SETTINGS STATE ───────────────────────────────────────────────
+  const S = {
+    music:      true,
+    sfx:        true,
+    particles:  true,
+    shake:      true,
+    musicVol:   0.72,
+    sfxVol:     0.80,
+    gridOpacity:0.50,
+    theme:      'cyber',
+  };
+
   // ── STATE ───────────────────────────────────────────────────────
   let blocks = [], moving = null;
   let score = 0, best = 0;
@@ -261,14 +421,14 @@
   let gameRunning = false;
   let animId = null;
   let speedBadgeTimer = null;
+  let isFirstGame = true;
 
   // VFX state
-  let particles      = [];   // { x,y,vx,vy,life,maxLife,r,color,rot,vrot,type }
-  let fallingChunks  = [];   // { x,y,w,vx,vy,vrot,rot,color,alpha }
-  let shockwaves     = [];   // { x,y,r,maxR,life,maxLife }
+  let particles      = [];
+  let fallingChunks  = [];
+  let shockwaves     = [];
   let screenShake    = { x:0, y:0, mag:0, decay:0.85 };
   let comboCount     = 0;
-  let comboVisible   = false;
   let comboTimer     = null;
 
   // Parallax bg layers
@@ -279,19 +439,24 @@
   ];
 
   // ── DOM ─────────────────────────────────────────────────────────
-  const canvas      = document.getElementById('canvas');
-  const ctx         = canvas.getContext('2d');
-  const scoreEl     = document.getElementById('score-label');
-  const bestEl      = document.getElementById('best-val');
-  const startScreen = document.getElementById('start-screen');
-  const goScreen    = document.getElementById('gameover-screen');
-  const goScore     = document.getElementById('gameover-score');
-  const startBtn    = document.getElementById('start-btn');
-  const restartBtn  = document.getElementById('restart-btn');
-  const perfectEl   = document.getElementById('perfect-flash');
-  const speedBadge  = document.getElementById('speed-badge');
-  const comboHud    = document.getElementById('combo-hud');
-  const comboCountEl= document.getElementById('combo-count');
+  const canvas        = document.getElementById('canvas');
+  const ctx           = canvas.getContext('2d');
+  const scoreEl       = document.getElementById('score-label');
+  const bestEl        = document.getElementById('best-val');
+  const menuScreen    = document.getElementById('menu-screen');
+  const menuSub       = document.getElementById('menu-sub');
+  const menuBestRow   = document.getElementById('menu-best-row');
+  const menuBestVal   = document.getElementById('menu-best-val');
+  const startBtn      = document.getElementById('start-btn');
+  const menuSettBtn   = document.getElementById('menu-settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  const settingsClose = document.getElementById('settings-close');
+  const settingsPlayBtn = document.getElementById('settings-play-btn');
+  const settingsBtn   = document.getElementById('settings-btn');
+  const perfectEl     = document.getElementById('perfect-flash');
+  const speedBadge    = document.getElementById('speed-badge');
+  const comboHud      = document.getElementById('combo-hud');
+  const comboCountEl  = document.getElementById('combo-count');
 
   // ── RESIZE ──────────────────────────────────────────────────────
   function resize() {
@@ -413,7 +578,7 @@
       const sx = screenShake.x * (li + 1) * 0.3;
       const sy = screenShake.y * (li + 1) * 0.3;
       ctx.save();
-      ctx.strokeStyle = `rgba(224,255,79,${layer.alpha + depth * 0.015})`;
+      ctx.strokeStyle = `rgba(224,255,79,${(layer.alpha + depth * 0.015) * S.gridOpacity * 2})`;
       ctx.lineWidth = 0.5;
       ctx.beginPath(); // single path for ALL lines in this layer
       const cols = Math.ceil(canvas.width / layer.size) + 2;
@@ -655,15 +820,16 @@
       osc.type = type;
       osc.frequency.setValueAtTime(freq, now);
       if (freqEnd !== null) osc.frequency.exponentialRampToValueAtTime(freqEnd, now + decay);
+      const v = vol * S.sfxVol;
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(vol, now + attack);
+      gain.gain.linearRampToValueAtTime(v, now + attack);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
       osc.start(now);
       osc.stop(now + decay + 0.02);
     } catch(e) {}
   }
 
-  // Gürültü patlaması (blok yerleşme / chunk düşme)
+  // Gürültü patlaması
   function playNoise({ vol=0.12, decay=0.08, t=null } = {}) {
     try {
       const ac   = getAudio();
@@ -681,7 +847,8 @@
       src.connect(filt);
       filt.connect(gain);
       gain.connect(ac.destination);
-      gain.gain.setValueAtTime(vol, now);
+      const v = vol * S.sfxVol;
+      gain.gain.setValueAtTime(v, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
       src.start(now);
       src.stop(now + decay + 0.01);
@@ -932,7 +1099,7 @@
     const mg = getMaster();
     mg.gain.cancelScheduledValues(ac.currentTime);
     mg.gain.setValueAtTime(mg.gain.value, ac.currentTime);
-    mg.gain.linearRampToValueAtTime(0.72, ac.currentTime + 0.8);
+    mg.gain.linearRampToValueAtTime(0.72 * S.musicVol, ac.currentTime + 0.8);
     schedulerTick();
   }
 
@@ -1067,11 +1234,11 @@
       // Spawn falling chunk(s)
       if (moving.x < last.x) {
         spawnFallingChunk(moving.x, moving.y, last.x - moving.x, moving.color, 'left');
-        sfxChunk();
+        if (S.sfx) sfxChunk();
       }
       if (moving.x + moving.w > last.x + last.w) {
         spawnFallingChunk(last.x + last.w, moving.y, (moving.x + moving.w) - (last.x + last.w), moving.color, 'right');
-        sfxChunk();
+        if (S.sfx) sfxChunk();
       }
       moving.w = overlap;
       moving.x = overlapStart;
@@ -1080,13 +1247,12 @@
 
     if (isPerfect) {
       triggerPerfect();
-      sfxPerfect(comboCount);
-      spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
-      spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2);
-      triggerShake(3 + comboCount * 0.8);
+      if (S.sfx) sfxPerfect(comboCount);
+      if (S.particles) { spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2); spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2); }
+      if (S.shake) triggerShake(3 + comboCount * 0.8);
     } else {
-      sfxPlace(moving.w);
-      triggerShake(1.5);
+      if (S.sfx) sfxPlace(moving.w);
+      if (S.shake) triggerShake(1.5);
     }
 
     blocks.push({ x: moving.x, w: moving.w, y: moving.y, color: moving.color });
@@ -1094,7 +1260,7 @@
     scoreEl.textContent = score;
     if (score > best) { best = score; bestEl.textContent = best; }
 
-    if (score % 5 === 0) { showSpeedBadge(); sfxSpeedUp(); }
+    if (score % 5 === 0) { showSpeedBadge(); if (S.sfx) sfxSpeedUp(); }
 
     updateComboUI();
 
@@ -1123,9 +1289,13 @@
   function endGame() {
     gameRunning = false;
     musicStop();
-    sfxGameOver();
-    goScore.textContent = `SCORE — ${score}`;
-    goScreen.classList.remove('hidden');
+    if (S.sfx) sfxGameOver();
+    // Show menu screen in "game over" mode
+    isFirstGame = false;
+    menuSub.innerHTML = `SCORE &nbsp;<strong style="color:var(--accent)">${score}</strong>&nbsp;&nbsp;·&nbsp;&nbsp;BEST &nbsp;<strong style="color:var(--accent)">${best}</strong>`;
+    startBtn.textContent = '▶  TRY AGAIN';
+    menuBestRow.style.display = 'none';
+    menuScreen.classList.remove('hidden');
   }
 
   // ── BLOCK SHADOW ─────────────────────────────────────────────────
@@ -1192,27 +1362,94 @@
 
   // ── START / RESTART ──────────────────────────────────────────────
   function startGame() {
-    startScreen.classList.add('hidden');
-    goScreen.classList.add('hidden');
+    menuScreen.classList.add('hidden');
+    settingsPanel.classList.remove('open');
     initGame();
     gameRunning = true;
-    musicStop();          // temizle
-    musicStart();         // yeni oyunla başlat
+    musicStop();
+    if (S.music) musicStart();
     if (animId) cancelAnimationFrame(animId);
     loop();
   }
 
-  startBtn.addEventListener('click',   startGame);
-  restartBtn.addEventListener('click', startGame);
+  // ── INPUT ────────────────────────────────────────────────────────
+  function handleAction() {
+    if (gameRunning) placeBlock();
+  }
 
   window.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !gameRunning) {
+    if (e.code === 'Space') {
       e.preventDefault();
-      startGame();
+      if (!gameRunning && !settingsPanel.classList.contains('open')) startGame();
+      else handleAction();
     }
+    if (e.code === 'Escape') closeSettings();
+  });
+  canvas.addEventListener('pointerdown', e => { e.preventDefault(); handleAction(); });
+
+  // ── SETTINGS PANEL LOGIC ─────────────────────────────────────────
+  function openSettings() { settingsPanel.classList.add('open'); }
+  function closeSettings() { settingsPanel.classList.remove('open'); }
+
+  settingsBtn.addEventListener('click', openSettings);
+  menuSettBtn.addEventListener('click', openSettings);
+  settingsClose.addEventListener('click', closeSettings);
+  settingsPlayBtn.addEventListener('click', closeSettings);
+  settingsPanel.addEventListener('click', e => { if (e.target === settingsPanel) closeSettings(); });
+
+  // Toggles
+  document.querySelectorAll('.toggle').forEach(tog => {
+    tog.addEventListener('click', () => {
+      const key = tog.dataset.key;
+      S[key] = !S[key];
+      tog.classList.toggle('on', S[key]);
+      if (key === 'music') {
+        if (S.music && gameRunning) musicStart();
+        else if (!S.music) musicStop();
+      }
+      if (key === 'shake' && !S.shake) { screenShake.x = 0; screenShake.y = 0; screenShake.mag = 0; }
+    });
   });
 
-  loop();
+  // Sliders
+  function bindSlider(id, valId, cb) {
+    const sl = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    sl.addEventListener('input', () => {
+      vl.textContent = sl.value;
+      cb(parseFloat(sl.value) / 100);
+    });
+  }
+  bindSlider('sl-music-vol', 'sl-music-vol-val', v => {
+    S.musicVol = v;
+    if (masterGain && audioCtx) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.setValueAtTime(S.music ? v * 0.72 : 0, audioCtx.currentTime);
+    }
+  });
+  bindSlider('sl-sfx-vol',   'sl-sfx-vol-val',   v => { S.sfxVol = v; });
+  bindSlider('sl-grid',      'sl-grid-val',       v => { S.gridOpacity = v; });
+
+  // Theme swatches
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const t = sw.dataset.theme;
+      S.theme = t;
+      document.body.setAttribute('data-theme', t);
+      _gradCache.clear(); // invalidate block gradient cache on theme change
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+    });
+  });
+
+  // ── MENU SCREEN SETUP ────────────────────────────────────────────
+  startBtn.addEventListener('click', startGame);
+
+  // Initial state — show menu
+  menuBestRow.style.display = best > 0 ? 'block' : 'none';
+  menuBestVal.textContent   = best;
+
+  loop(); // background preview loop on menu
 })();
 </script>
 </body>
