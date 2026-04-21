@@ -480,22 +480,16 @@
   }
 
   // ── BLOCK VISUALS ────────────────────────────────────────────────
-  // Gradient cache: key = "h_w" → reuse across frames for same block
   const _gradCache = new Map();
   function blockGradient(h, x, y, w) {
-    // Gradients are position-dependent in Canvas, so we use a 0-based
-    // gradient and apply it via pattern trick — instead, just create
-    // a simple top→bottom gradient once per unique (h,w) combo.
-    // We re-create only when the cache would grow stale (hue changes per block).
     const key = `${h % 360}_${Math.round(w)}`;
     if (_gradCache.has(key)) return _gradCache.get(key);
     const l1 = 68, s1 = 72;
-    // Use a 0,0 → 0,BLOCK_H gradient (position-independent direction)
     const g = ctx.createLinearGradient(0, 0, 0, BLOCK_H);
     g.addColorStop(0,   `hsl(${h % 360}, ${s1}%, ${l1}%)`);
     g.addColorStop(0.4, `hsl(${(h+15) % 360}, ${s1-5}%, ${l1-8}%)`);
     g.addColorStop(1,   `hsl(${(h+35) % 360}, 65%, ${l1-20}%)`);
-    if (_gradCache.size > 80) _gradCache.clear(); // prevent unbounded growth
+    if (_gradCache.size > 80) _gradCache.clear();
     _gradCache.set(key, g);
     return g;
   }
@@ -509,7 +503,6 @@
     ctx.globalAlpha = alpha;
     ctx.translate(screenX, screenY);
 
-    // Neon glow — only on top block and only when needed (expensive)
     if (isTop || comboCount >= 3) {
       const glowIntensity = isTop ? 10 + comboCount * 3 : 6;
       ctx.shadowColor = `hsl(${b.color % 360}, 80%, 65%)`;
@@ -523,13 +516,11 @@
 
     ctx.shadowBlur = 0;
 
-    // Glassmorphic top sheen — static gradient (no position needed)
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.beginPath();
     ctx.roundRect(2, 2, b.w - 4, BLOCK_H * 0.45, 3);
     ctx.fill();
 
-    // Edge rim light
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -544,7 +535,6 @@
     const screenY = moving.y - cameraY + screenShake.y;
     const screenX = moving.x + screenShake.x;
 
-    // Predict line — single path
     ctx.save();
     ctx.strokeStyle = `hsla(${moving.color}, 70%, 60%, 0.13)`;
     ctx.lineWidth = 1;
@@ -564,7 +554,6 @@
     ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Ambient vertical gradient tint that shifts with height
     const depth = -targetCameraY / 2000;
     const r = Math.floor(lerp(10, 5, Math.min(depth, 1)));
     const g2 = Math.floor(lerp(10, 8, Math.min(depth, 1)));
@@ -572,7 +561,6 @@
     ctx.fillStyle = `rgb(${r},${g2},${b2})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Multi-layer parallax grids — batched into single path per layer
     BG_LAYERS.forEach((layer, li) => {
       const offset = (cameraY * layer.speed) % layer.size;
       const sx = screenShake.x * (li + 1) * 0.3;
@@ -580,7 +568,7 @@
       ctx.save();
       ctx.strokeStyle = `rgba(224,255,79,${(layer.alpha + depth * 0.015) * S.gridOpacity * 2})`;
       ctx.lineWidth = 0.5;
-      ctx.beginPath(); // single path for ALL lines in this layer
+      ctx.beginPath();
       const cols = Math.ceil(canvas.width / layer.size) + 2;
       for (let i = -1; i < cols; i++) {
         const x = i * layer.size + sx;
@@ -593,11 +581,10 @@
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
       }
-      ctx.stroke(); // one draw call for whole grid layer
+      ctx.stroke();
       ctx.restore();
     });
 
-    // Distant horizon glow at the top as tower gets taller
     if (depth > 0.1) {
       const horizGrad = ctx.createRadialGradient(
         canvas.width / 2, canvas.height * 0.2, 0,
@@ -612,10 +599,10 @@
   }
 
   // ── PARTICLES ────────────────────────────────────────────────────
-  const MAX_PARTICLES = 60; // hard cap
+  const MAX_PARTICLES = 60;
 
   function spawnPerfectParticles(cx, cy) {
-    const count = Math.min(16 + comboCount * 3, 28); // was 28+combo*6
+    const count = Math.min(16 + comboCount * 3, 28);
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
       const speed = 2 + Math.random() * 3 + comboCount * 0.4;
@@ -626,14 +613,13 @@
         vy: Math.sin(angle) * speed - 1.2,
         life: 1, maxLife: 1,
         r: 2 + Math.random() * 2.5,
-        color: h2, // store raw hue int, build string at draw time
+        color: h2,
         rot: Math.random() * Math.PI * 2,
         vrot: (Math.random() - 0.5) * 0.2,
-        type: Math.random() < 0.4 ? 1 : 0, // 0=circle, 1=square
+        type: Math.random() < 0.4 ? 1 : 0,
         gravity: 0.07,
       });
     }
-    // Streaks — fewer, no shadowBlur needed
     for (let i = 0; i < 5; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 3.5 + Math.random() * 4;
@@ -642,19 +628,17 @@
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 0.55, maxLife: 0.55,
-        r: 0, color: -1, // -1 = white streak
+        r: 0, color: -1,
         rot: angle, vrot: 0,
-        type: 2, // streak
+        type: 2,
         gravity: 0,
         pvx: Math.cos(angle) * speed, pvy: Math.sin(angle) * speed,
       });
     }
-    // Enforce global cap
     if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
   }
 
   function spawnFallingChunk(x, y, w, colorH, side) {
-    // "side" is 'left' or 'right' — which offcut fell
     const vx = side === 'left' ? -1.5 - Math.random() * 2 : 1.5 + Math.random() * 2;
     fallingChunks.push({
       x, y,
@@ -681,7 +665,7 @@
       p.vx *= 0.96;
       p.vy *= 0.96;
       p.rot += p.vrot;
-      p.life -= 0.028; // slightly faster decay = fewer active particles
+      p.life -= 0.028;
       if (p.life <= 0) { particles.splice(i, 1); }
     }
   }
@@ -714,17 +698,12 @@
     if (!particles.length) return;
     const sx = screenShake.x, sy = screenShake.y - cameraY;
 
-    // Draw circles in one pass
-    ctx.beginPath();
-    // We can't batch different alphas/colors easily, so group by type and draw individually
-    // but avoid save/restore and shadowBlur entirely
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       const alpha = Math.max(0, p.life / p.maxLife);
       const px = p.x + sx, py = p.y + sy;
 
       if (p.type === 2) {
-        // streak
         ctx.globalAlpha = alpha * 0.9;
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.lineWidth   = 1.2;
@@ -737,10 +716,8 @@
         ctx.globalAlpha = alpha;
         ctx.fillStyle   = colorStr;
         if (p.type === 1) {
-          // square — no rotate (skip translate/rotate for perf)
           ctx.fillRect(px - p.r, py - p.r, p.r * 2, p.r * 2);
         } else {
-          // circle
           ctx.beginPath();
           ctx.arc(px, py, p.r, 0, Math.PI * 2);
           ctx.fill();
@@ -760,12 +737,10 @@
       ctx.globalAlpha = c.alpha;
       ctx.translate(screenX + c.w / 2, screenY + BLOCK_H / 2);
       ctx.rotate(c.rot);
-      // Simple flat color — no gradient, no shadowBlur on falling debris
       ctx.fillStyle = `hsl(${c.color % 360}, 70%, 58%)`;
       ctx.beginPath();
       ctx.roundRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H, 3);
       ctx.fill();
-      // Minimal sheen
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.fillRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H * 0.4);
       ctx.restore();
@@ -783,11 +758,9 @@
       ctx.globalAlpha = alpha;
       ctx.strokeStyle = `hsl(${hue}, 88%, 72%)`;
       ctx.lineWidth   = lw;
-      // Outer ring
       ctx.beginPath();
       ctx.ellipse(screenX, screenY, s.r, s.r * 0.26, 0, 0, Math.PI * 2);
       ctx.stroke();
-      // Inner ring
       ctx.globalAlpha = alpha * 0.35;
       ctx.lineWidth   = 0.8;
       ctx.beginPath();
@@ -797,17 +770,15 @@
     });
   }
 
-  // ── AUDIO ENGINE (Web Audio API — sıfır dosya) ───────────────────
+  // ── AUDIO ENGINE ────────────────────────────────────────────────
   let audioCtx = null;
 
   function getAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Tarayıcı suspend edebilir, kullanıcı etkileşimi sonrası resume et
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
 
-  // Yardımcı: osc + gain zinciri, otomatik temizlik
   function playTone({ type='sine', freq=440, freqEnd=null, vol=0.18,
                       attack=0.005, decay=0.12, t=null }) {
     try {
@@ -829,7 +800,6 @@
     } catch(e) {}
   }
 
-  // Gürültü patlaması
   function playNoise({ vol=0.12, decay=0.08, t=null } = {}) {
     try {
       const ac   = getAudio();
@@ -855,43 +825,33 @@
     } catch(e) {}
   }
 
-  // ── SES OLAYLARI ─────────────────────────────────────────────────
-
-  // Normal blok yerleşme: kısa tok "klik" + ince ton
   function sfxPlace(blockWidth) {
-    const pitch = 180 + (blockWidth / 260) * 120; // geniş blok → daha alçak
+    const pitch = 180 + (blockWidth / 260) * 120;
     playNoise({ vol: 0.10, decay: 0.06 });
     playTone({ type: 'triangle', freq: pitch, freqEnd: pitch * 0.7,
                vol: 0.10, attack: 0.003, decay: 0.09 });
   }
 
-  // Perfect vuruş: iki katmanlı parlak akord
   function sfxPerfect(combo) {
     const base  = 520 + combo * 40;
     const ac    = getAudio();
     const now   = ac.currentTime;
-    // Temel ton
     playTone({ type: 'sine', freq: base,        freqEnd: base * 1.05,
                vol: 0.20, attack: 0.004, decay: 0.22, t: now });
-    // Beşli üst
     playTone({ type: 'sine', freq: base * 1.5,  freqEnd: base * 1.5,
                vol: 0.10, attack: 0.008, decay: 0.18, t: now });
-    // Parlak harmonik
     playTone({ type: 'triangle', freq: base * 2, freqEnd: base * 1.8,
                vol: 0.06, attack: 0.01, decay: 0.14, t: now });
-    // Tiz ping
     playTone({ type: 'sine', freq: base * 4,    freqEnd: base * 3,
                vol: 0.04, attack: 0.002, decay: 0.10, t: now });
   }
 
-  // Chunk düşme: kısa "ploink" aşağı sweep
   function sfxChunk() {
     playTone({ type: 'sawtooth', freq: 260, freqEnd: 80,
                vol: 0.08, attack: 0.003, decay: 0.14 });
     playNoise({ vol: 0.06, decay: 0.05 });
   }
 
-  // Hız artışı: kısa yukarı arpej
   function sfxSpeedUp() {
     const ac  = getAudio();
     const now = ac.currentTime;
@@ -901,7 +861,6 @@
     });
   }
 
-  // Oyun sonu: dramatik aşağı arpej + gürültü
   function sfxGameOver() {
     const ac  = getAudio();
     const now = ac.currentTime;
@@ -912,23 +871,17 @@
     });
   }
 
-  // ── MÜZİK MOTORU — 16 adımlı step sequencer ─────────────────────
-  // Tamamen Web Audio API sentezi. Sıfır dosya.
-  // Yapı: Kick | Snare | HiHat | Bass line | Arp lead
-  // BPM score arttıkça hafifçe hızlanır (70→110 arası)
-
+  // ── MÜZİK MOTORU ────────────────────────────────────────────────
   let musicRunning  = false;
-  let musicStep     = 0;       // 0–15
-  let nextStepTime  = 0;       // AudioContext zamanı
-  let scheduleAhead = 0.10;    // kaç saniye önceden schedule et
+  let musicStep     = 0;
+  let nextStepTime  = 0;
+  let scheduleAhead = 0.10;
   let scheduleTimer = null;
   let masterGain    = null;
 
-  // ─── TEMEL BPM ───
   function getBPM() { return Math.min(70 + score * 0.8, 110); }
-  function stepSec() { return 60 / getBPM() / 4; } // 16th note
+  function stepSec() { return 60 / getBPM() / 4; }
 
-  // ─── MASTER GAIN (fade in/out için) ───
   function getMaster() {
     if (masterGain) return masterGain;
     const ac = getAudio();
@@ -938,13 +891,10 @@
     return masterGain;
   }
 
-  // ─── TEMEL YAPI TAŞLARI ───
-
   function beatKick(t) {
     try {
       const ac = getAudio();
       const mg = getMaster();
-      // Body — sine sweep aşağı
       const osc = ac.createOscillator();
       const g   = ac.createGain();
       osc.type = 'sine';
@@ -954,7 +904,6 @@
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
       osc.connect(g); g.connect(mg);
       osc.start(t); osc.stop(t + 0.30);
-      // Click transient
       const n   = ac.createOscillator();
       const ng  = ac.createGain();
       n.type = 'square'; n.frequency.value = 80;
@@ -969,7 +918,6 @@
     try {
       const ac = getAudio();
       const mg = getMaster();
-      // Tone body
       const osc = ac.createOscillator();
       const og  = ac.createGain();
       osc.type = 'triangle'; osc.frequency.value = 200;
@@ -977,7 +925,6 @@
       og.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
       osc.connect(og); og.connect(mg);
       osc.start(t); osc.stop(t + 0.15);
-      // Noise body
       const bufLen = Math.floor(ac.sampleRate * 0.18);
       const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
       const data = buf.getChannelData(0);
@@ -1015,8 +962,7 @@
     } catch(e) {}
   }
 
-  // Bass synth — sawtooth + lowpass filter, pentatonik dizi
-  const BASS_NOTES = [55, 55, 73.4, 55, 65.4, 55, 49, 55]; // A1, D2 bölgesi Hz
+  const BASS_NOTES = [55, 55, 73.4, 55, 65.4, 55, 49, 55];
   function beatBass(t, step) {
     try {
       const ac   = getAudio();
@@ -1038,7 +984,6 @@
     } catch(e) {}
   }
 
-  // Arp lead — pentatonik Mi minör, 16th note melodisi
   const ARP_SCALE = [329.6, 369.9, 392, 440, 493.8, 523.2, 587.3, 659.2];
   const ARP_PATTERN = [0,null,2,null,4,2,null,5,null,3,null,6,4,null,2,null];
   function beatArp(t, step) {
@@ -1060,9 +1005,6 @@
     } catch(e) {}
   }
 
-  // ─── 16-ADIM PATTERN ───
-  // K=kick  S=snare  H=hihat(closed)  O=hihat(open)
-  // step:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
   const PAT_KICK  = [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0];
   const PAT_SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1];
   const PAT_HHAT  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
@@ -1086,7 +1028,7 @@
       musicStep = (musicStep + 1) % 16;
       nextStepTime += stepSec();
     }
-    scheduleTimer = setTimeout(schedulerTick, 25); // 25ms polling
+    scheduleTimer = setTimeout(schedulerTick, 25);
   }
 
   function musicStart() {
@@ -1095,7 +1037,6 @@
     musicRunning  = true;
     musicStep     = 0;
     nextStepTime  = ac.currentTime + 0.05;
-    // Fade in master
     const mg = getMaster();
     mg.gain.cancelScheduledValues(ac.currentTime);
     mg.gain.setValueAtTime(mg.gain.value, ac.currentTime);
@@ -1113,7 +1054,7 @@
     masterGain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
   }
 
-  // ── SCREEN SHAKE ─────────────────────────────────────────────────
+  // ── SCREEN SHAKE ────────────────────────────────────────────────
   function triggerShake(magnitude) {
     screenShake.mag = magnitude;
   }
@@ -1125,7 +1066,7 @@
     screenShake.mag *= screenShake.decay;
   }
 
-  // ── CAMERA ───────────────────────────────────────────────────────
+  // ── CAMERA ──────────────────────────────────────────────────────
   let cameraEaseT    = 0;
   let cameraEaseFrom = 0;
   let cameraEaseTo   = 0;
@@ -1148,7 +1089,7 @@
     }
   }
 
-  // ── BLOCK FACTORY ────────────────────────────────────────────────
+  // ── BLOCK FACTORY ───────────────────────────────────────────────
   function makeBase() {
     const W  = canvas.width;
     const bw = Math.min(W * 0.55, 260);
@@ -1164,7 +1105,7 @@
     moving = { x: startX, w: last.w, y: last.y - BLOCK_H, dir, color: hue };
   }
 
-  // ── INIT GAME ────────────────────────────────────────────────────
+  // ── INIT GAME ───────────────────────────────────────────────────
   function initGame() {
     blocks         = [];
     moving         = null;
@@ -1191,7 +1132,7 @@
     spawnMoving();
   }
 
-  // ── COMBO ────────────────────────────────────────────────────────
+  // ── COMBO ───────────────────────────────────────────────────────
   function updateComboUI() {
     if (comboCount >= 2) {
       comboCountEl.textContent = `×${comboCount}`;
@@ -1208,7 +1149,7 @@
     updateComboUI();
   }
 
-  // ── PLACE BLOCK ──────────────────────────────────────────────────
+  // ── PLACE BLOCK ─────────────────────────────────────────────────
   function placeBlock() {
     if (!moving || !gameRunning) return;
     const last = blocks[blocks.length - 1];
@@ -1231,7 +1172,6 @@
       isPerfect = true;
       comboCount++;
     } else {
-      // Spawn falling chunk(s)
       if (moving.x < last.x) {
         spawnFallingChunk(moving.x, moving.y, last.x - moving.x, moving.color, 'left');
         if (S.sfx) sfxChunk();
@@ -1264,7 +1204,6 @@
 
     updateComboUI();
 
-    // Elastic camera snap
     const newTop = blocks[blocks.length - 1];
     targetCameraY = newTop.y - canvas.height * 0.68;
     startCameraEase(targetCameraY);
@@ -1272,7 +1211,7 @@
     spawnMoving();
   }
 
-  // ── PERFECT FLASH ────────────────────────────────────────────────
+  // ── PERFECT FLASH ───────────────────────────────────────────────
   function triggerPerfect() {
     perfectEl.classList.remove('pop');
     void perfectEl.offsetWidth;
@@ -1285,12 +1224,11 @@
     speedBadgeTimer = setTimeout(() => speedBadge.classList.remove('show'), 1800);
   }
 
-  // ── END GAME ─────────────────────────────────────────────────────
+  // ── END GAME ────────────────────────────────────────────────────
   function endGame() {
     gameRunning = false;
     musicStop();
     if (S.sfx) sfxGameOver();
-    // Show menu screen in "game over" mode
     isFirstGame = false;
     menuSub.innerHTML = `SCORE &nbsp;<strong style="color:var(--accent)">${score}</strong>&nbsp;&nbsp;·&nbsp;&nbsp;BEST &nbsp;<strong style="color:var(--accent)">${best}</strong>`;
     startBtn.textContent = '▶  TRY AGAIN';
@@ -1298,12 +1236,12 @@
     menuScreen.classList.remove('hidden');
   }
 
-  // ── BLOCK SHADOW ─────────────────────────────────────────────────
+  // ── BLOCK SHADOW ────────────────────────────────────────────────
   function drawShadows() {
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = '#000';
-    ctx.beginPath(); // single path for all shadows
+    ctx.beginPath();
     blocks.forEach(b => {
       const screenY = b.y - cameraY + screenShake.y;
       if (screenY > canvas.height + 30 || screenY < -60) return;
@@ -1330,14 +1268,12 @@
       if (moving.x + moving.w < -10)    moving.dir =  1;
     }
 
-    // Draw placed blocks
     blocks.forEach((b, i) => {
       const isTop = i === blocks.length - 1;
       drawBlock(b, 1, isTop);
     });
     drawShadows();
 
-    // VFX layers
     drawShockwaves();
     drawFallingChunks();
     drawParticles();
@@ -1348,19 +1284,29 @@
   }
 
   // ── INPUT ────────────────────────────────────────────────────────
+  // DÜZELTİLDİ: Tek bir handleAction tanımı, tek bir event listener seti
   function handleAction() {
     if (gameRunning) placeBlock();
   }
 
   window.addEventListener('keydown', e => {
-    if (e.code === 'Space') { e.preventDefault(); handleAction(); }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!gameRunning && !settingsPanel.classList.contains('open')) {
+        startGame();
+      } else {
+        handleAction();
+      }
+    }
+    if (e.code === 'Escape') closeSettings();
   });
+
   canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
     handleAction();
   });
 
-  // ── START / RESTART ──────────────────────────────────────────────
+  // ── START / RESTART ─────────────────────────────────────────────
   function startGame() {
     menuScreen.classList.add('hidden');
     settingsPanel.classList.remove('open');
@@ -1372,22 +1318,7 @@
     loop();
   }
 
-  // ── INPUT ────────────────────────────────────────────────────────
-  function handleAction() {
-    if (gameRunning) placeBlock();
-  }
-
-  window.addEventListener('keydown', e => {
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (!gameRunning && !settingsPanel.classList.contains('open')) startGame();
-      else handleAction();
-    }
-    if (e.code === 'Escape') closeSettings();
-  });
-  canvas.addEventListener('pointerdown', e => { e.preventDefault(); handleAction(); });
-
-  // ── SETTINGS PANEL LOGIC ─────────────────────────────────────────
+  // ── SETTINGS PANEL LOGIC ────────────────────────────────────────
   function openSettings() { settingsPanel.classList.add('open'); }
   function closeSettings() { settingsPanel.classList.remove('open'); }
 
@@ -1397,7 +1328,6 @@
   settingsPlayBtn.addEventListener('click', closeSettings);
   settingsPanel.addEventListener('click', e => { if (e.target === settingsPanel) closeSettings(); });
 
-  // Toggles
   document.querySelectorAll('.toggle').forEach(tog => {
     tog.addEventListener('click', () => {
       const key = tog.dataset.key;
@@ -1411,7 +1341,6 @@
     });
   });
 
-  // Sliders
   function bindSlider(id, valId, cb) {
     const sl = document.getElementById(id);
     const vl = document.getElementById(valId);
@@ -1430,26 +1359,24 @@
   bindSlider('sl-sfx-vol',   'sl-sfx-vol-val',   v => { S.sfxVol = v; });
   bindSlider('sl-grid',      'sl-grid-val',       v => { S.gridOpacity = v; });
 
-  // Theme swatches
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.addEventListener('click', () => {
       const t = sw.dataset.theme;
       S.theme = t;
       document.body.setAttribute('data-theme', t);
-      _gradCache.clear(); // invalidate block gradient cache on theme change
+      _gradCache.clear();
       document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
     });
   });
 
-  // ── MENU SCREEN SETUP ────────────────────────────────────────────
+  // ── MENU SCREEN SETUP ───────────────────────────────────────────
   startBtn.addEventListener('click', startGame);
 
-  // Initial state — show menu
   menuBestRow.style.display = best > 0 ? 'block' : 'none';
   menuBestVal.textContent   = best;
 
-  loop(); // background preview loop on menu
+  loop();
 })();
 </script>
 </body>
