@@ -549,25 +549,100 @@
     drawBlock(moving, 0.92, true);
   }
 
+  // ── STARS (static seed, generated once) ─────────────────────────
+  const STARS = (() => {
+    const arr = [];
+    // 3 layers: far (small/dim), mid, near (bright/large)
+    const cfg = [
+      { count: 80,  rMin: 0.4, rMax: 0.9,  aMin: 0.25, aMax: 0.55, speed: 0.04 },
+      { count: 50,  rMin: 0.7, rMax: 1.4,  aMin: 0.40, aMax: 0.75, speed: 0.10 },
+      { count: 25,  rMin: 1.2, rMax: 2.2,  aMin: 0.55, aMax: 1.00, speed: 0.20 },
+    ];
+    cfg.forEach(c => {
+      for (let i = 0; i < c.count; i++) {
+        arr.push({
+          x:     Math.random(),          // 0-1 normalised
+          y:     Math.random() * 4 - 1,  // tall field (4× screen height)
+          r:     c.rMin + Math.random() * (c.rMax - c.rMin),
+          a:     c.aMin + Math.random() * (c.aMax - c.aMin),
+          speed: c.speed,
+          twinkle: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.02 + Math.random() * 0.04,
+        });
+      }
+    });
+    return arr;
+  })();
+
   // ── PARALLAX BACKGROUND ──────────────────────────────────────────
   function drawBackground() {
-    ctx.fillStyle = BG_COLOR;
+    // Deep space gradient — not flat black
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    bgGrad.addColorStop(0,   '#06060f');
+    bgGrad.addColorStop(0.5, '#08080e');
+    bgGrad.addColorStop(1,   '#0c0b10');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const depth = -targetCameraY / 2000;
-    const r = Math.floor(lerp(10, 5, Math.min(depth, 1)));
-    const g2 = Math.floor(lerp(10, 8, Math.min(depth, 1)));
-    const b2 = Math.floor(lerp(15, 25, Math.min(depth, 1)));
-    ctx.fillStyle = `rgb(${r},${g2},${b2})`;
+    const depth = Math.max(0, -targetCameraY / 2000);
+
+    // ── Nebula blobs — always visible, shift with height ──────────
+    const nCx = canvas.width * 0.72;
+    const nCy = canvas.height * 0.25 + (cameraY * 0.05) % canvas.height;
+    const nR  = canvas.width * 0.55;
+    const ng  = ctx.createRadialGradient(nCx, nCy, 0, nCx, nCy, nR);
+    ng.addColorStop(0,   `hsla(${hue}, 65%, 28%, 0.13)`);
+    ng.addColorStop(0.5, `hsla(${(hue+40)%360}, 55%, 20%, 0.07)`);
+    ng.addColorStop(1,   'transparent');
+    ctx.fillStyle = ng;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    const nCx2 = canvas.width * 0.20;
+    const nCy2 = canvas.height * 0.68 + (cameraY * 0.03) % canvas.height;
+    const nR2  = canvas.width * 0.45;
+    const ng2  = ctx.createRadialGradient(nCx2, nCy2, 0, nCx2, nCy2, nR2);
+    ng2.addColorStop(0,   `hsla(${(hue+120)%360}, 55%, 22%, 0.10)`);
+    ng2.addColorStop(1,   'transparent');
+    ctx.fillStyle = ng2;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ── Stars ─────────────────────────────────────────────────────
+    STARS.forEach(s => {
+      s.twinkle += s.twinkleSpeed;
+      const twinkAlpha = s.a * (0.7 + 0.3 * Math.sin(s.twinkle));
+      const sx = s.x * canvas.width  + screenShake.x * s.speed * 3;
+      // scroll: stars move slower than camera (parallax)
+      const sy = ((s.y * canvas.height * 4 - cameraY * s.speed) % (canvas.height * 1.5) + canvas.height * 1.5) % (canvas.height * 1.5) - canvas.height * 0.25;
+      if (sy < -10 || sy > canvas.height + 10) return;
+      ctx.globalAlpha = twinkAlpha;
+      ctx.fillStyle   = `hsl(${(hue + 180) % 360}, 40%, 95%)`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      // Bright stars get a soft glow cross
+      if (s.r > 1.6) {
+        ctx.globalAlpha = twinkAlpha * 0.35;
+        ctx.strokeStyle = `hsl(${(hue + 180) % 360}, 60%, 90%)`;
+        ctx.lineWidth   = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(sx - s.r * 2.5, sy); ctx.lineTo(sx + s.r * 2.5, sy);
+        ctx.moveTo(sx, sy - s.r * 2.5); ctx.lineTo(sx, sy + s.r * 2.5);
+        ctx.stroke();
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    // ── Parallax grids — much brighter ───────────────────────────
     BG_LAYERS.forEach((layer, li) => {
       const offset = (cameraY * layer.speed) % layer.size;
       const sx = screenShake.x * (li + 1) * 0.3;
       const sy = screenShake.y * (li + 1) * 0.3;
+      // Increased base alpha significantly
+      const baseAlpha = [0.18, 0.12, 0.07][li];
+      const alpha = (baseAlpha + depth * 0.04) * S.gridOpacity * 2;
       ctx.save();
-      ctx.strokeStyle = `rgba(224,255,79,${(layer.alpha + depth * 0.015) * S.gridOpacity * 2})`;
-      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = `hsla(${hue}, 80%, 65%, ${alpha})`;
+      ctx.lineWidth = li === 0 ? 0.8 : 0.5;
       ctx.beginPath();
       const cols = Math.ceil(canvas.width / layer.size) + 2;
       for (let i = -1; i < cols; i++) {
@@ -585,13 +660,21 @@
       ctx.restore();
     });
 
-    if (depth > 0.1) {
+    // ── Bottom ground glow ────────────────────────────────────────
+    const groundGrad = ctx.createLinearGradient(0, canvas.height * 0.75, 0, canvas.height);
+    groundGrad.addColorStop(0, 'transparent');
+    groundGrad.addColorStop(1, `hsla(${hue}, 60%, 18%, 0.18)`);
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ── Height-based horizon glow (gets stronger as tower grows) ──
+    if (depth > 0.05) {
+      const a = Math.min(depth * 0.12, 0.18);
       const horizGrad = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height * 0.2, 0,
-        canvas.width / 2, canvas.height * 0.2, canvas.width * 0.7
+        canvas.width / 2, canvas.height * 0.15, 0,
+        canvas.width / 2, canvas.height * 0.15, canvas.width * 0.75
       );
-      const a = Math.min(depth * 0.06, 0.08);
-      horizGrad.addColorStop(0, `hsla(${hue}, 70%, 50%, ${a})`);
+      horizGrad.addColorStop(0, `hsla(${hue}, 80%, 55%, ${a})`);
       horizGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = horizGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
