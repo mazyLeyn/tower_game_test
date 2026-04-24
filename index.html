@@ -9,276 +9,204 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── THEMES ── */
   :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a28;
-    --accent: #e0ff4f;
-    --accent-rgb: 224,255,79;
-    --text: #f0f0f8;
-    --muted: #4a4a6a;
-    --danger: #ff4f6e;
-    --grid-color: rgba(224,255,79,0.035);
-  }
-  body[data-theme="cyber"] {
     --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a28;
     --accent: #e0ff4f; --accent-rgb: 224,255,79;
-    --grid-color: rgba(224,255,79,0.035);
+    --text: #f0f0f8; --muted: #4a4a6a; --danger: #ff4f6e;
+    --streak-color: #ffd700;
   }
-  body[data-theme="neon"] {
-    --bg: #080010; --surface: #110020; --surface2: #1a0030;
-    --accent: #bf5fff; --accent-rgb: 191,95,255;
-    --grid-color: rgba(191,95,255,0.04);
-  }
-  body[data-theme="ice"] {
-    --bg: #050d14; --surface: #0a1825; --surface2: #0f2030;
-    --accent: #4ff0ff; --accent-rgb: 79,240,255;
-    --grid-color: rgba(79,240,255,0.035);
-  }
-  body[data-theme="fire"] {
-    --bg: #0f0500; --surface: #1a0a00; --surface2: #281000;
-    --accent: #ff6b1a; --accent-rgb: 255,107,26;
-    --grid-color: rgba(255,107,26,0.04);
-  }
-  body[data-theme="matrix"] {
-    --bg: #000a00; --surface: #001200; --surface2: #001a00;
-    --accent: #00ff41; --accent-rgb: 0,255,65;
-    --grid-color: rgba(0,255,65,0.04);
-  }
+  body[data-theme="cyber"]  { --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a28; --accent:#e0ff4f; --accent-rgb:224,255,79; }
+  body[data-theme="neon"]   { --bg:#080010; --surface:#110020; --surface2:#1a0030; --accent:#bf5fff; --accent-rgb:191,95,255; }
+  body[data-theme="ice"]    { --bg:#050d14; --surface:#0a1825; --surface2:#0f2030; --accent:#4ff0ff; --accent-rgb:79,240,255; }
+  body[data-theme="fire"]   { --bg:#0f0500; --surface:#1a0a00; --surface2:#281000; --accent:#ff6b1a; --accent-rgb:255,107,26; }
+  body[data-theme="matrix"] { --bg:#000a00; --surface:#001200; --surface2:#001a00; --accent:#00ff41; --accent-rgb:0,255,65; }
 
-  html, body {
-    width: 100%; height: 100%;
-    overflow: hidden;
-    background: var(--bg);
-    font-family: 'Space Mono', monospace;
-    color: var(--text);
-    touch-action: none;
-    user-select: none;
-    transition: background 0.5s;
-  }
+  html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'Space Mono',monospace; color:var(--text); touch-action:none; user-select:none; }
+  #app { position:relative; width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
 
-  #app {
-    position: relative;
-    width: 100vw; height: 100vh;
-    display: flex; flex-direction: column;
-    align-items: center; overflow: hidden;
-  }
+  #hud { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; justify-content:space-between; align-items:flex-start; padding:20px 28px 0; pointer-events:none; }
+  #score-label { font-family:'Bebas Neue',cursive; font-size:clamp(56px,12vw,96px); line-height:1; color:var(--accent); text-shadow:0 0 40px rgba(var(--accent-rgb),.35); letter-spacing:2px; will-change:transform; }
+  #score-label.combo-glow { text-shadow:0 0 60px rgba(var(--accent-rgb),.9),0 0 100px rgba(var(--accent-rgb),.4); }
+  #stats-col { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  #best-label { font-size:11px; color:var(--muted); text-align:right; line-height:1.6; }
+  #best-label span { color:var(--accent); font-size:20px; display:block; font-family:'Bebas Neue',cursive; letter-spacing:2px; }
 
-  /* ── HUD ── */
-  #hud {
-    position: fixed; top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 20px 28px 0;
-    pointer-events: none;
+  #streak-label { font-size:11px; color:var(--muted); text-align:right; line-height:1.6; letter-spacing:.05em; }
+  #streak-val-wrap { display:flex; align-items:baseline; justify-content:flex-end; gap:2px; }
+  #streak-val { font-family:'Bebas Neue',cursive; font-size:20px; letter-spacing:2px; color:var(--streak-color); text-shadow:0 0 12px rgba(255,215,0,.5); display:inline-block; }
+  #streak-suffix { font-family:'Bebas Neue',cursive; font-size:14px; color:rgba(255,215,0,.6); letter-spacing:1px; }
+  @keyframes streakPulse {
+    0%  { transform:scale(1); }
+    40% { transform:scale(1.35); }
+    100%{ transform:scale(1); }
   }
-  #score-label {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(56px, 12vw, 96px);
-    line-height: 1; color: var(--accent);
-    text-shadow: 0 0 40px rgba(var(--accent-rgb),.35);
-    letter-spacing: 2px; transition: text-shadow 0.3s;
-  }
-  #score-label.combo-glow {
-    text-shadow: 0 0 60px rgba(var(--accent-rgb),.9), 0 0 100px rgba(var(--accent-rgb),.4);
-  }
-  #best-label { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.6; }
-  #best-label span { color: var(--accent); font-size: 20px; display: block; }
+  #streak-val.pulse { animation:streakPulse 0.4s ease forwards; }
 
-  /* Settings gear button */
-  #settings-btn {
-    position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
-    z-index: 120; background: none; border: 1px solid rgba(var(--accent-rgb),.2);
-    color: var(--muted); cursor: pointer; border-radius: 50%;
-    width: 34px; height: 34px; font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .2s; pointer-events: all;
+  #streak-mode-badge {
+    position:fixed; top:50%; right:20px; transform:translateY(-50%);
+    z-index:120; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    opacity:0; transition:opacity .6s ease;
   }
-  #settings-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateX(-50%) rotate(45deg); }
+  #streak-mode-badge.visible { opacity:1; }
+  #streak-mode-icon { font-size:22px; animation:floatIcon 2s ease-in-out infinite; }
+  #streak-mode-text { font-family:'Bebas Neue',cursive; font-size:10px; letter-spacing:.2em; color:var(--streak-color); text-shadow:0 0 10px rgba(255,215,0,.6); }
+  @keyframes floatIcon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
 
-  /* ── COMBO HUD ── */
-  #combo-hud {
-    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-    z-index: 110; display: flex; flex-direction: column; align-items: center;
-    padding-top: 60px; pointer-events: none; opacity: 0; transition: opacity 0.3s;
-  }
-  #combo-hud.visible { opacity: 1; }
-  #combo-count {
-    font-family: 'Bebas Neue', cursive; font-size: clamp(28px, 6vw, 46px);
-    letter-spacing: 4px; color: var(--accent);
-    text-shadow: 0 0 20px rgba(var(--accent-rgb),.8); line-height: 1;
-  }
-  #combo-label { font-size: 9px; letter-spacing: 0.25em; color: rgba(var(--accent-rgb),.6); text-transform: uppercase; margin-top: 2px; }
+  #settings-btn { position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:120; background:none; border:1px solid rgba(var(--accent-rgb),.2); color:var(--muted); cursor:pointer; border-radius:50%; width:34px; height:34px; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .2s; pointer-events:all; }
+  #settings-btn:hover { border-color:var(--accent); color:var(--accent); transform:translateX(-50%) rotate(45deg); }
 
-  /* ── CANVAS ── */
-  #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #combo-hud { position:fixed; top:0; left:50%; transform:translateX(-50%); z-index:110; display:flex; flex-direction:column; align-items:center; padding-top:60px; pointer-events:none; opacity:0; transition:opacity 0.2s; }
+  #combo-hud.visible { opacity:1; }
+  #combo-count { font-family:'Bebas Neue',cursive; font-size:clamp(28px,6vw,46px); letter-spacing:4px; color:var(--accent); text-shadow:0 0 20px rgba(var(--accent-rgb),.8); line-height:1; }
+  #combo-label { font-size:9px; letter-spacing:0.25em; color:rgba(var(--accent-rgb),.6); text-transform:uppercase; margin-top:2px; }
 
-  /* ── SCREENS ── */
-  .screen {
-    position: fixed; inset: 0; z-index: 200;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(10,10,15,.93); backdrop-filter: blur(14px);
-    gap: 0; transition: opacity .4s ease;
-  }
-  .screen.hidden { opacity: 0; pointer-events: none; }
+  #canvas { position:absolute; top:0; left:0; width:100%; height:100%; image-rendering:auto; }
 
-  .screen-title {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(64px, 18vw, 130px);
-    color: var(--accent); letter-spacing: 4px;
-    text-shadow: 0 0 80px rgba(var(--accent-rgb),.5), 0 0 160px rgba(var(--accent-rgb),.2);
-    line-height: 0.9; text-align: center; margin-bottom: 10px;
-  }
-  .screen-title .sub-title {
-    display: block; font-size: clamp(14px, 3vw, 22px);
-    letter-spacing: 10px; color: rgba(var(--accent-rgb),.5);
-    text-shadow: none; margin-top: 4px;
-  }
+  .screen { position:fixed; inset:0; z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(10,10,15,.93); backdrop-filter:blur(14px); transition:opacity .4s ease; }
+  .screen.hidden { opacity:0; pointer-events:none; }
+  .screen-title { font-family:'Bebas Neue',cursive; font-size:clamp(64px,18vw,130px); color:var(--accent); letter-spacing:4px; text-shadow:0 0 80px rgba(var(--accent-rgb),.5),0 0 160px rgba(var(--accent-rgb),.2); line-height:0.9; text-align:center; margin-bottom:10px; }
+  .screen-title .sub-title { display:block; font-size:clamp(14px,3vw,22px); letter-spacing:10px; color:rgba(var(--accent-rgb),.5); text-shadow:none; margin-top:4px; }
+  .screen-sub { font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; line-height:2.2; max-width:260px; margin-bottom:8px; }
 
-  .screen-sub {
-    font-size: 11px; color: var(--muted); letter-spacing: .12em;
-    text-transform: uppercase; text-align: center; line-height: 2.2;
-    max-width: 260px; margin-bottom: 8px;
-  }
+  .btn { padding:13px 38px; background:var(--accent); color:#0a0a0f; border:none; cursor:pointer; font-family:'Space Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%); transition:transform .15s,box-shadow .15s; outline:none; margin-top:8px; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(var(--accent-rgb),.4); }
+  .btn:active { transform:translateY(0); }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.1); clip-path:none; border-radius:3px; font-size:11px; padding:10px 28px; }
+  .btn-ghost:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); box-shadow:none; }
 
-  /* ── BUTTONS ── */
-  .btn {
-    padding: 13px 38px; background: var(--accent); color: #0a0a0f;
-    border: none; cursor: pointer; font-family: 'Space Mono', monospace;
-    font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
-    clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
-    transition: transform .15s, box-shadow .15s; outline: none; margin-top: 8px;
-  }
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(var(--accent-rgb),.4); }
-  .btn:active { transform: translateY(0); }
-  .btn-ghost {
-    background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,.1);
-    clip-path: none; border-radius: 3px; font-size: 11px; padding: 10px 28px;
-  }
-  .btn-ghost:hover { color: var(--accent); border-color: rgba(var(--accent-rgb),.4); box-shadow: none; }
+  #menu-best-row { margin-top:18px; font-size:10px; color:var(--muted); letter-spacing:.15em; text-align:center; display:none; }
 
-  /* ── GAME OVER SCREEN extras ── */
-  #gameover-score {
-    font-family: 'Bebas Neue', cursive; font-size: clamp(32px, 7vw, 52px);
-    color: var(--text); letter-spacing: 3px; margin: 6px 0 2px;
-  }
-  #gameover-best {
-    font-size: 10px; color: var(--muted); letter-spacing: .15em;
-    text-transform: uppercase; margin-bottom: 16px;
-  }
-  #gameover-best span { color: var(--accent); }
-  .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+  #speed-badge { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:100; font-size:10px; letter-spacing:.15em; color:var(--muted); text-transform:uppercase; pointer-events:none; opacity:0; transition:opacity .5s; }
+  #speed-badge.show { opacity:1; }
 
-  /* ── SPEED BADGE ── */
-  #speed-badge {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    z-index: 100; font-size: 10px; letter-spacing: .15em; color: var(--muted);
-    text-transform: uppercase; pointer-events: none; opacity: 0; transition: opacity .5s;
-  }
-  #speed-badge.show { opacity: 1; }
-
-  /* ── PERFECT FLASH ── */
-  #perfect-flash {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    font-family: 'Bebas Neue', cursive; font-size: 48px; color: var(--accent);
-    letter-spacing: 6px; pointer-events: none; z-index: 300; opacity: 0;
-    text-shadow: 0 0 30px rgba(var(--accent-rgb),.7);
-  }
+  #perfect-flash { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-family:'Bebas Neue',cursive; font-size:48px; color:var(--accent); letter-spacing:6px; pointer-events:none; z-index:300; opacity:0; text-shadow:0 0 30px rgba(var(--accent-rgb),.7); }
   @keyframes perfectPop {
-    0%   { opacity:0; transform:translate(-50%,-50%) scale(.6); }
-    30%  { opacity:1; transform:translate(-50%,-55%) scale(1.15); }
-    70%  { opacity:1; transform:translate(-50%,-60%) scale(1); }
-    100% { opacity:0; transform:translate(-50%,-70%) scale(.9); }
+    0%  { opacity:0; transform:translate(-50%,-50%) scale(.6); }
+    30% { opacity:1; transform:translate(-50%,-55%) scale(1.15); }
+    70% { opacity:1; transform:translate(-50%,-60%) scale(1); }
+    100%{ opacity:0; transform:translate(-50%,-70%) scale(.9); }
   }
-  #perfect-flash.pop { animation: perfectPop .9s ease forwards; }
+  #perfect-flash.pop { animation:perfectPop .9s ease forwards; }
+  #perfect-flash.pop.tier3 { color:var(--streak-color); text-shadow:0 0 40px rgba(255,215,0,.9); font-size:58px; }
 
-  /* ── SETTINGS PANEL ── */
-  #settings-panel {
-    position: fixed; inset: 0; z-index: 500;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(5,5,10,.88); backdrop-filter: blur(18px);
-    opacity: 0; pointer-events: none; transition: opacity .3s;
-  }
-  #settings-panel.open { opacity: 1; pointer-events: all; }
+  #settings-panel { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; background:rgba(5,5,10,.88); backdrop-filter:blur(18px); opacity:0; pointer-events:none; transition:opacity .3s; }
+  #settings-panel.open { opacity:1; pointer-events:all; }
+  .settings-card { background:var(--surface); border:1px solid rgba(var(--accent-rgb),.12); border-radius:16px; padding:28px 28px 22px; width:min(380px,90vw); max-height:90vh; overflow-y:auto; box-shadow:0 0 60px rgba(var(--accent-rgb),.08); }
+  .settings-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; }
+  .settings-title { font-family:'Bebas Neue',cursive; font-size:28px; color:var(--accent); letter-spacing:3px; }
+  .settings-close { background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; padding:4px 8px; transition:color .2s; }
+  .settings-close:hover { color:var(--text); }
+  .settings-section { margin-bottom:20px; }
+  .settings-section-label { font-size:9px; letter-spacing:.2em; color:var(--muted); text-transform:uppercase; margin-bottom:10px; display:block; }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:12px; }
+  .setting-row label { font-size:11px; color:var(--text); letter-spacing:.05em; flex:1; }
+  .setting-row .val { font-size:11px; color:var(--accent); min-width:28px; text-align:right; font-variant-numeric:tabular-nums; }
+  input[type=range] { flex:2; -webkit-appearance:none; appearance:none; height:3px; background:var(--surface2); border-radius:2px; outline:none; accent-color:var(--accent); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; background:var(--accent); border-radius:50%; cursor:pointer; }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .toggle-row label { font-size:11px; color:var(--text); }
+  .toggle { position:relative; width:38px; height:20px; background:var(--surface2); border-radius:10px; cursor:pointer; transition:background .2s; flex-shrink:0; border:1px solid rgba(255,255,255,.08); }
+  .toggle.on { background:var(--accent); }
+  .toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; background:var(--muted); border-radius:50%; transition:transform .2s,background .2s; }
+  .toggle.on::after { transform:translateX(18px); background:#0a0a0f; }
+  .theme-swatches { display:flex; gap:8px; flex-wrap:wrap; }
+  .swatch { width:36px; height:36px; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all .2s; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .swatch:hover { transform:scale(1.12); }
+  .swatch.active { border-color:white; box-shadow:0 0 12px rgba(255,255,255,.3); }
+  .s-divider { height:1px; background:rgba(255,255,255,.05); margin:4px 0 18px; }
 
-  .settings-card {
-    background: var(--surface); border: 1px solid rgba(var(--accent-rgb),.12);
-    border-radius: 16px; padding: 28px 28px 22px;
-    width: min(380px, 90vw); max-height: 90vh; overflow-y: auto;
-    box-shadow: 0 0 60px rgba(var(--accent-rgb),.08);
+  /* ── PWA INSTALL ROW ── */
+  #pwa-install-row {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--accent-rgb), .18);
+    background: rgba(var(--accent-rgb), .05);
+    transition: background .2s, border-color .2s, transform .12s;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 4px;
   }
-  .settings-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 22px;
+  #pwa-install-row:hover { background: rgba(var(--accent-rgb), .10); border-color: rgba(var(--accent-rgb), .35); }
+  #pwa-install-row:active { transform: scale(.983); }
+  .pwa-row-left { display:flex; align-items:center; gap:11px; flex:1; }
+  .pwa-icon-wrap {
+    width:32px; height:32px; flex-shrink:0;
+    background: rgba(var(--accent-rgb), .10);
+    border: 1px solid rgba(var(--accent-rgb), .25);
+    border-radius: 7px;
+    display:flex; align-items:center; justify-content:center;
+    transition: background .2s, box-shadow .2s;
   }
-  .settings-title {
-    font-family: 'Bebas Neue', cursive; font-size: 28px;
-    color: var(--accent); letter-spacing: 3px;
+  #pwa-install-row:hover .pwa-icon-wrap {
+    background: rgba(var(--accent-rgb), .20);
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), .28);
   }
-  .settings-close {
-    background: none; border: none; color: var(--muted); font-size: 20px;
-    cursor: pointer; padding: 4px 8px; transition: color .2s;
+  .pwa-svg { width:16px; height:16px; overflow:visible; }
+  .pwa-svg line, .pwa-svg polyline { stroke:var(--accent); stroke-width:2; stroke-linecap:round; fill:none; }
+  @keyframes pwaArrowBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+  #pwa-install-row:hover .pwa-svg { animation: pwaArrowBounce .65s ease-in-out infinite; }
+  .pwa-text-col { display:flex; flex-direction:column; gap:2px; }
+  .pwa-label { font-size:11px; color:var(--text); letter-spacing:.05em; }
+  .pwa-sublabel { font-size:9px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+  .pwa-badge {
+    font-family:'Bebas Neue',cursive; font-size:10px; letter-spacing:.12em;
+    color:#0a0a0f; background:var(--accent);
+    padding:1px 7px; border-radius:3px; flex-shrink:0;
+    clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
   }
-  .settings-close:hover { color: var(--text); }
 
-  .settings-section { margin-bottom: 20px; }
-  .settings-section-label {
-    font-size: 9px; letter-spacing: .2em; color: var(--muted);
-    text-transform: uppercase; margin-bottom: 10px; display: block;
+  /* ── iOS MODAL ── */
+  #pwa-ios-modal {
+    position:fixed; inset:0; z-index:9999;
+    background: rgba(5,5,12,.90);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display:flex; align-items:flex-end; justify-content:center;
+    padding: 0 12px 32px;
+    opacity:0; pointer-events:none;
+    transition: opacity .3s ease;
   }
-
-  /* Slider */
-  .setting-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px; gap: 12px;
+  #pwa-ios-modal.open { opacity:1; pointer-events:all; }
+  .pwa-modal-card {
+    background: var(--surface);
+    border: 1px solid rgba(var(--accent-rgb), .20);
+    border-radius: 20px;
+    padding: 26px 22px 22px;
+    width:100%; max-width:360px;
+    box-shadow: 0 0 80px rgba(var(--accent-rgb),.12), 0 -4px 40px rgba(0,0,0,.7);
+    transform: translateY(28px);
+    transition: transform .38s cubic-bezier(.22,.88,.36,1);
   }
-  .setting-row label { font-size: 11px; color: var(--text); letter-spacing: .05em; flex: 1; }
-  .setting-row .val { font-size: 11px; color: var(--accent); min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
-  input[type=range] {
-    flex: 2; -webkit-appearance: none; appearance: none;
-    height: 3px; background: var(--surface2); border-radius: 2px; outline: none;
-    accent-color: var(--accent);
+  #pwa-ios-modal.open .pwa-modal-card { transform: translateY(0); }
+  .pwa-modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .pwa-modal-title { font-family:'Bebas Neue',cursive; font-size:22px; color:var(--accent); letter-spacing:3px; }
+  .pwa-modal-close { background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:4px 6px; transition:color .2s; line-height:1; }
+  .pwa-modal-close:hover { color:var(--text); }
+  .pwa-modal-intro { font-size:10px; color:var(--muted); letter-spacing:.07em; line-height:1.9; margin-bottom:16px; text-transform:uppercase; }
+  .pwa-steps { display:flex; flex-direction:column; }
+  .pwa-step { display:flex; align-items:flex-start; gap:13px; padding:11px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+  .pwa-step:last-child { border-bottom:none; }
+  .pwa-step-num {
+    width:24px; height:24px; flex-shrink:0;
+    border:1.5px solid rgba(var(--accent-rgb),.35);
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue',cursive; font-size:13px; color:var(--accent);
+    margin-top:1px;
   }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 14px; height: 14px;
-    background: var(--accent); border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 8px rgba(var(--accent-rgb),.6);
+  .pwa-step-title { font-size:11px; color:var(--text); font-weight:700; letter-spacing:.05em; margin-bottom:3px; }
+  .pwa-step-desc { font-size:10px; color:var(--muted); letter-spacing:.04em; line-height:1.7; }
+  .pwa-chip {
+    display:inline-flex; align-items:center; gap:3px;
+    background:rgba(var(--accent-rgb),.10); border:1px solid rgba(var(--accent-rgb),.22);
+    border-radius:4px; padding:1px 6px;
+    font-size:10px; color:var(--accent); vertical-align:middle;
   }
-
-  /* Toggle */
-  .toggle-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .toggle-row label { font-size: 11px; color: var(--text); }
-  .toggle {
-    position: relative; width: 38px; height: 20px;
-    background: var(--surface2); border-radius: 10px;
-    cursor: pointer; transition: background .2s; flex-shrink: 0;
-    border: 1px solid rgba(255,255,255,.08);
-  }
-  .toggle.on { background: var(--accent); }
-  .toggle::after {
-    content: ''; position: absolute; top: 2px; left: 2px;
-    width: 14px; height: 14px; background: var(--muted);
-    border-radius: 50%; transition: transform .2s, background .2s;
-  }
-  .toggle.on::after { transform: translateX(18px); background: #0a0a0f; }
-
-  /* Theme swatches */
-  .theme-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
-  .swatch {
-    width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
-    border: 2px solid transparent; transition: all .2s;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-  }
-  .swatch:hover { transform: scale(1.12); }
-  .swatch.active { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,.3); }
-
-  /* divider */
-  .s-divider { height: 1px; background: rgba(255,255,255,.05); margin: 4px 0 18px; }
 </style>
 </head>
 <body>
@@ -286,12 +214,23 @@
 
   <div id="hud">
     <div id="score-label">0</div>
-    <div id="best-label">BEST<span id="best-val">0</span></div>
+    <div id="stats-col">
+      <div id="best-label">BEST<span id="best-val">0</span></div>
+      <div id="streak-label">BEST STREAK
+        <div id="streak-val-wrap">
+          <span id="streak-val">0</span><span id="streak-suffix">×</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="streak-mode-badge">
+    <div id="streak-mode-icon">🔥</div>
+    <div id="streak-mode-text">STREAK MODE</div>
   </div>
 
   <button id="settings-btn" title="Settings">⚙</button>
 
-  <!-- Combo HUD -->
   <div id="combo-hud">
     <div id="combo-count">×1</div>
     <div id="combo-label">Perfect Combo</div>
@@ -301,78 +240,39 @@
   <div id="perfect-flash">PERFECT</div>
   <div id="speed-badge">⚡ Speed Up!</div>
 
-  <!-- ── MENU / START screen (also shown after game over) ── -->
   <div class="screen" id="menu-screen">
-    <div class="screen-title">
-      Sky Scraper:<br>To Space
-      <span class="sub-title">ARCADE</span>
-    </div>
+    <div class="screen-title">Sky Scraper:<br>To Space<span class="sub-title">ARCADE</span></div>
     <div class="screen-sub" id="menu-sub">Tap or press SPACE to place blocks.<br>Build as high as you can.</div>
     <button class="btn" id="start-btn">▶ &nbsp;START GAME</button>
     <button class="btn btn-ghost" id="menu-settings-btn" style="margin-top:10px">⚙ &nbsp;SETTINGS</button>
-    <div id="menu-best-row" style="margin-top:18px;font-size:10px;color:var(--muted);letter-spacing:.15em;text-align:center;display:none">
-      BEST &nbsp;<span id="menu-best-val" style="color:var(--accent)">0</span>
-    </div>
+    <div id="menu-best-row">BEST &nbsp;<span id="menu-best-val" style="color:var(--accent)">0</span></div>
   </div>
 
-  <!-- ── SETTINGS PANEL ── -->
   <div id="settings-panel">
     <div class="settings-card">
       <div class="settings-header">
         <span class="settings-title">SETTINGS</span>
         <button class="settings-close" id="settings-close">✕</button>
       </div>
-
-      <!-- MUSIC -->
       <div class="settings-section">
         <span class="settings-section-label">🎵 Music</span>
-        <div class="toggle-row">
-          <label>Background Music</label>
-          <div class="toggle on" id="tog-music" data-key="music"></div>
-        </div>
-        <div class="setting-row">
-          <label>Music Volume</label>
-          <input type="range" id="sl-music-vol" min="0" max="100" value="72">
-          <span class="val" id="sl-music-vol-val">72</span>
-        </div>
+        <div class="toggle-row"><label>Background Music</label><div class="toggle on" id="tog-music" data-key="music"></div></div>
+        <div class="setting-row"><label>Music Volume</label><input type="range" id="sl-music-vol" min="0" max="100" value="72"><span class="val" id="sl-music-vol-val">72</span></div>
       </div>
       <div class="s-divider"></div>
-
-      <!-- SFX -->
       <div class="settings-section">
         <span class="settings-section-label">🔊 Sound Effects</span>
-        <div class="toggle-row">
-          <label>Sound Effects</label>
-          <div class="toggle on" id="tog-sfx" data-key="sfx"></div>
-        </div>
-        <div class="setting-row">
-          <label>SFX Volume</label>
-          <input type="range" id="sl-sfx-vol" min="0" max="100" value="80">
-          <span class="val" id="sl-sfx-vol-val">80</span>
-        </div>
+        <div class="toggle-row"><label>Sound Effects</label><div class="toggle on" id="tog-sfx" data-key="sfx"></div></div>
+        <div class="setting-row"><label>SFX Volume</label><input type="range" id="sl-sfx-vol" min="0" max="100" value="80"><span class="val" id="sl-sfx-vol-val">80</span></div>
       </div>
       <div class="s-divider"></div>
-
-      <!-- VISUALS -->
       <div class="settings-section">
         <span class="settings-section-label">✨ Visuals</span>
-        <div class="toggle-row">
-          <label>Particles</label>
-          <div class="toggle on" id="tog-particles" data-key="particles"></div>
-        </div>
-        <div class="toggle-row">
-          <label>Screen Shake</label>
-          <div class="toggle on" id="tog-shake" data-key="shake"></div>
-        </div>
-        <div class="setting-row">
-          <label>Grid Opacity</label>
-          <input type="range" id="sl-grid" min="0" max="100" value="50">
-          <span class="val" id="sl-grid-val">50</span>
-        </div>
+        <div class="toggle-row"><label>Particles</label><div class="toggle on" id="tog-particles" data-key="particles"></div></div>
+        <div class="toggle-row"><label>Screen Shake</label><div class="toggle on" id="tog-shake" data-key="shake"></div></div>
+        <div class="setting-row"><label>Grid Opacity</label><input type="range" id="sl-grid" min="0" max="100" value="50"><span class="val" id="sl-grid-val">50</span></div>
       </div>
       <div class="s-divider"></div>
-
-      <!-- THEME -->
       <div class="settings-section">
         <span class="settings-section-label">🎨 Color Theme</span>
         <div class="theme-swatches">
@@ -384,7 +284,67 @@
         </div>
       </div>
 
+      <!-- ── PWA INSTALL ROW ── -->
+      <div class="s-divider" id="pwa-divider" style="display:none"></div>
+      <div class="settings-section" id="pwa-section" style="display:none">
+        <span class="settings-section-label">📲 Uygulama</span>
+        <div id="pwa-install-row" role="button" tabindex="0" aria-label="Uygulamayı yükle">
+          <div class="pwa-row-left">
+            <div class="pwa-icon-wrap">
+              <svg class="pwa-svg" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <line x1="8" y1="1" x2="8" y2="10.5"/>
+                <polyline points="4.5,7.5 8,11 11.5,7.5"/>
+                <line x1="2.5" y1="14.5" x2="13.5" y2="14.5"/>
+              </svg>
+            </div>
+            <div class="pwa-text-col">
+              <span class="pwa-label">Uygulamayı Yükle</span>
+              <span class="pwa-sublabel">Ana ekrana ekle</span>
+            </div>
+          </div>
+          <span class="pwa-badge">ÜCRETSİZ</span>
+        </div>
+      </div>
+      <!-- ── PWA INSTALL ROW SONU ── -->
+
       <button class="btn" id="settings-play-btn" style="width:100%;margin-top:8px">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- ── iOS MODAL ── -->
+  <div id="pwa-ios-modal" role="dialog" aria-modal="true">
+    <div class="pwa-modal-card">
+      <div class="pwa-modal-header">
+        <span class="pwa-modal-title">ANA EKRANA EKLE</span>
+        <button class="pwa-modal-close" id="pwa-modal-close">✕</button>
+      </div>
+      <p class="pwa-modal-intro">
+        Oyunu ana ekranına ekleyerek uygulama gibi aç.<br>
+        Safari'de şu adımları takip et:
+      </p>
+      <div class="pwa-steps">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div>
+            <div class="pwa-step-title">Paylaş Butonuna Dokun</div>
+            <div class="pwa-step-desc">Ekranın altındaki <span class="pwa-chip">⎋ Paylaş</span> butonuna dokun.</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div>
+            <div class="pwa-step-title">Aşağı Kaydır</div>
+            <div class="pwa-step-desc">Menüde <span class="pwa-chip">＋ Ana Ekrana Ekle</span> seçeneğini bul.</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div>
+            <div class="pwa-step-title">Ekle'ye Dokun</div>
+            <div class="pwa-step-desc">Sağ üstteki <span class="pwa-chip">Ekle</span> butonuna dokun. Hazır! 🎮</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -393,24 +353,24 @@
 <script>
 (() => {
   // ── CONFIG ──────────────────────────────────────────────────────
-  const BLOCK_H        = 28;
-  const BASE_SPEED     = 2.8;
-  const SPEED_STEP     = 0.22;
-  const PERFECT_TOL    = 4;
-  const CAMERA_EASE    = 0.08;
-  const GROUND_BLOCKS  = 4;
-  const BG_COLOR       = '#0a0a0f';
+  const BLOCK_H       = 28;
+  const BASE_SPEED    = 2.8;
+  const SPEED_STEP    = 0.22;
+  const PERFECT_TOL   = 4;
+  const CAMERA_EASE   = 0.08;
+  const GROUND_BLOCKS = 4;
+  const STREAK_THRESH = 3;
+  const MAX_PARTICLES = 50;
+  const MAX_CHUNKS    = 12;
+  const MAX_SHOCKWAVES= 4;
+  const STAR_COUNT    = 120;
 
-  // ── SETTINGS STATE ───────────────────────────────────────────────
+  // ── SETTINGS ───────────────────────────────────────────────────
   const S = {
-    music:      true,
-    sfx:        true,
-    particles:  true,
-    shake:      true,
-    musicVol:   0.72,
-    sfxVol:     0.80,
-    gridOpacity:0.50,
-    theme:      'cyber',
+    music: true, sfx: true,
+    particles: true, shake: true,
+    musicVol: 0.72, sfxVol: 0.80, gridOpacity: 0.50,
+    theme: 'cyber',
   };
 
   // ── STATE ───────────────────────────────────────────────────────
@@ -423,799 +383,778 @@
   let speedBadgeTimer = null;
   let isFirstGame = true;
 
-  // VFX state
-  let particles      = [];
-  let fallingChunks  = [];
-  let shockwaves     = [];
-  let screenShake    = { x:0, y:0, mag:0, decay:0.85 };
-  let comboCount     = 0;
-  let comboTimer     = null;
+  let particles = [], fallingChunks = [], shockwaves = [];
+  let screenShake = { x:0, y:0, mag:0 };
+  let comboCount = 0;
+  let currentStreak = 0;
+  let bestStreak = parseInt(localStorage.getItem('sb_best_streak') || '0');
+  let streakModeActive = false;
 
-  // Parallax bg layers
-  const BG_LAYERS = [
-    { speed: 0.08, alpha: 0.04, size: 120 },
-    { speed: 0.18, alpha: 0.035, size: 60 },
-    { speed: 0.32, alpha: 0.03, size: 25 },
-  ];
+  let cameraEaseT = 0, cameraEaseFrom = 0, cameraEaseTo = 0, cameraEasing = false;
 
-  // ── DOM ─────────────────────────────────────────────────────────
-  const canvas        = document.getElementById('canvas');
-  const ctx           = canvas.getContext('2d');
-  const scoreEl       = document.getElementById('score-label');
-  const bestEl        = document.getElementById('best-val');
-  const menuScreen    = document.getElementById('menu-screen');
-  const menuSub       = document.getElementById('menu-sub');
-  const menuBestRow   = document.getElementById('menu-best-row');
-  const menuBestVal   = document.getElementById('menu-best-val');
-  const startBtn      = document.getElementById('start-btn');
-  const menuSettBtn   = document.getElementById('menu-settings-btn');
-  const settingsPanel = document.getElementById('settings-panel');
-  const settingsClose = document.getElementById('settings-close');
+  let gridCanvas = null, gridDirty = true;
+  let bgCanvas = null, bgW = 0, bgH = 0;
+  let stars = [];
+
+  const canvas          = document.getElementById('canvas');
+  const ctx             = canvas.getContext('2d', { alpha: false });
+  const scoreEl         = document.getElementById('score-label');
+  const bestEl          = document.getElementById('best-val');
+  const streakValEl     = document.getElementById('streak-val');
+  const streakModeBadge = document.getElementById('streak-mode-badge');
+  const menuScreen      = document.getElementById('menu-screen');
+  const menuSub         = document.getElementById('menu-sub');
+  const menuBestRow     = document.getElementById('menu-best-row');
+  const menuBestVal     = document.getElementById('menu-best-val');
+  const startBtn        = document.getElementById('start-btn');
+  const menuSettBtn     = document.getElementById('menu-settings-btn');
+  const settingsPanel   = document.getElementById('settings-panel');
+  const settingsClose   = document.getElementById('settings-close');
   const settingsPlayBtn = document.getElementById('settings-play-btn');
-  const settingsBtn   = document.getElementById('settings-btn');
-  const perfectEl     = document.getElementById('perfect-flash');
-  const speedBadge    = document.getElementById('speed-badge');
-  const comboHud      = document.getElementById('combo-hud');
-  const comboCountEl  = document.getElementById('combo-count');
+  const settingsBtn     = document.getElementById('settings-btn');
+  const perfectEl       = document.getElementById('perfect-flash');
+  const speedBadge      = document.getElementById('speed-badge');
+  const comboHud        = document.getElementById('combo-hud');
+  const comboCountEl    = document.getElementById('combo-count');
+
+  streakValEl.textContent = bestStreak;
 
   // ── RESIZE ──────────────────────────────────────────────────────
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
+    buildStars();
+    gridDirty = true;
+    bgW = 0;
   }
   window.addEventListener('resize', resize);
   resize();
 
   // ── HELPERS ─────────────────────────────────────────────────────
   function lerp(a, b, t) { return a + (b - a) * t; }
-
   function easeOutElastic(t) {
     const c4 = (2 * Math.PI) / 4.5;
-    return t === 0 ? 0 : t === 1 ? 1 :
-      Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10*t) * Math.sin((t*10-0.75)*c4) + 1;
   }
+  function getSpeed() { return BASE_SPEED + Math.floor(score / 5) * SPEED_STEP; }
 
-  function getSpeed() {
-    return BASE_SPEED + Math.floor(score / 5) * SPEED_STEP;
-  }
-
-  // ── BLOCK VISUALS ────────────────────────────────────────────────
-  const _gradCache = new Map();
-  function blockGradient(h, x, y, w) {
-    const key = `${h % 360}_${Math.round(w)}`;
-    if (_gradCache.has(key)) return _gradCache.get(key);
-    const l1 = 68, s1 = 72;
-    const g = ctx.createLinearGradient(0, 0, 0, BLOCK_H);
-    g.addColorStop(0,   `hsl(${h % 360}, ${s1}%, ${l1}%)`);
-    g.addColorStop(0.4, `hsl(${(h+15) % 360}, ${s1-5}%, ${l1-8}%)`);
-    g.addColorStop(1,   `hsl(${(h+35) % 360}, 65%, ${l1-20}%)`);
-    if (_gradCache.size > 80) _gradCache.clear();
-    _gradCache.set(key, g);
-    return g;
-  }
-
-  function drawBlock(b, alpha = 1, isTop = false) {
-    const screenY = b.y - cameraY + screenShake.y;
-    const screenX = b.x + screenShake.x;
-    if (screenY > canvas.height + 60 || screenY < -80) return;
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(screenX, screenY);
-
-    if (isTop || comboCount >= 3) {
-      const glowIntensity = isTop ? 10 + comboCount * 3 : 6;
-      ctx.shadowColor = `hsl(${b.color % 360}, 80%, 65%)`;
-      ctx.shadowBlur  = glowIntensity;
+  function updateStreakUI(isNewRecord) {
+    streakValEl.textContent = bestStreak;
+    if (isNewRecord) {
+      streakValEl.classList.remove('pulse');
+      void streakValEl.offsetWidth;
+      streakValEl.classList.add('pulse');
     }
-
-    ctx.fillStyle = blockGradient(b.color, 0, 0, b.w);
-    ctx.beginPath();
-    ctx.roundRect(0, 0, b.w, BLOCK_H, 4);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.beginPath();
-    ctx.roundRect(2, 2, b.w - 4, BLOCK_H * 0.45, 3);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(0.5, 0.5, b.w - 1, BLOCK_H - 1, 4);
-    ctx.stroke();
-
-    ctx.restore();
   }
-
-  function drawMoving() {
-    if (!moving) return;
-    const screenY = moving.y - cameraY + screenShake.y;
-    const screenX = moving.x + screenShake.x;
-
-    ctx.save();
-    ctx.strokeStyle = `hsla(${moving.color}, 70%, 60%, 0.13)`;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 7]);
-    ctx.beginPath();
-    ctx.moveTo(screenX, screenY + BLOCK_H / 2);
-    ctx.lineTo(screenX + moving.w, screenY + BLOCK_H / 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    drawBlock(moving, 0.92, true);
-  }
-
-  // ── STARS (static seed, generated once) ─────────────────────────
-  const STARS = (() => {
-    const arr = [];
-    // 3 layers: far (small/dim), mid, near (bright/large)
-    const cfg = [
-      { count: 80,  rMin: 0.4, rMax: 0.9,  aMin: 0.25, aMax: 0.55, speed: 0.04 },
-      { count: 50,  rMin: 0.7, rMax: 1.4,  aMin: 0.40, aMax: 0.75, speed: 0.10 },
-      { count: 25,  rMin: 1.2, rMax: 2.2,  aMin: 0.55, aMax: 1.00, speed: 0.20 },
-    ];
-    cfg.forEach(c => {
-      for (let i = 0; i < c.count; i++) {
-        arr.push({
-          x:     Math.random(),          // 0-1 normalised
-          y:     Math.random() * 4 - 1,  // tall field (4× screen height)
-          r:     c.rMin + Math.random() * (c.rMax - c.rMin),
-          a:     c.aMin + Math.random() * (c.aMax - c.aMin),
-          speed: c.speed,
-          twinkle: Math.random() * Math.PI * 2,
-          twinkleSpeed: 0.02 + Math.random() * 0.04,
-        });
-      }
-    });
-    return arr;
-  })();
-
-  // ── PARALLAX BACKGROUND ──────────────────────────────────────────
-  function drawBackground() {
-    // Deep space gradient — not flat black
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bgGrad.addColorStop(0,   '#06060f');
-    bgGrad.addColorStop(0.5, '#08080e');
-    bgGrad.addColorStop(1,   '#0c0b10');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const depth = Math.max(0, -targetCameraY / 2000);
-
-    // ── Nebula blobs — always visible, shift with height ──────────
-    const nCx = canvas.width * 0.72;
-    const nCy = canvas.height * 0.25 + (cameraY * 0.05) % canvas.height;
-    const nR  = canvas.width * 0.55;
-    const ng  = ctx.createRadialGradient(nCx, nCy, 0, nCx, nCy, nR);
-    ng.addColorStop(0,   `hsla(${hue}, 65%, 28%, 0.13)`);
-    ng.addColorStop(0.5, `hsla(${(hue+40)%360}, 55%, 20%, 0.07)`);
-    ng.addColorStop(1,   'transparent');
-    ctx.fillStyle = ng;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const nCx2 = canvas.width * 0.20;
-    const nCy2 = canvas.height * 0.68 + (cameraY * 0.03) % canvas.height;
-    const nR2  = canvas.width * 0.45;
-    const ng2  = ctx.createRadialGradient(nCx2, nCy2, 0, nCx2, nCy2, nR2);
-    ng2.addColorStop(0,   `hsla(${(hue+120)%360}, 55%, 22%, 0.10)`);
-    ng2.addColorStop(1,   'transparent');
-    ctx.fillStyle = ng2;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ── Stars ─────────────────────────────────────────────────────
-    STARS.forEach(s => {
-      s.twinkle += s.twinkleSpeed;
-      const twinkAlpha = s.a * (0.7 + 0.3 * Math.sin(s.twinkle));
-      const sx = s.x * canvas.width  + screenShake.x * s.speed * 3;
-      // scroll: stars move slower than camera (parallax)
-      const sy = ((s.y * canvas.height * 4 - cameraY * s.speed) % (canvas.height * 1.5) + canvas.height * 1.5) % (canvas.height * 1.5) - canvas.height * 0.25;
-      if (sy < -10 || sy > canvas.height + 10) return;
-      ctx.globalAlpha = twinkAlpha;
-      ctx.fillStyle   = `hsl(${(hue + 180) % 360}, 40%, 95%)`;
-      ctx.beginPath();
-      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-      ctx.fill();
-      // Bright stars get a soft glow cross
-      if (s.r > 1.6) {
-        ctx.globalAlpha = twinkAlpha * 0.35;
-        ctx.strokeStyle = `hsl(${(hue + 180) % 360}, 60%, 90%)`;
-        ctx.lineWidth   = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(sx - s.r * 2.5, sy); ctx.lineTo(sx + s.r * 2.5, sy);
-        ctx.moveTo(sx, sy - s.r * 2.5); ctx.lineTo(sx, sy + s.r * 2.5);
-        ctx.stroke();
-      }
-    });
-    ctx.globalAlpha = 1;
-
-    // ── Parallax grids — much brighter ───────────────────────────
-    BG_LAYERS.forEach((layer, li) => {
-      const offset = (cameraY * layer.speed) % layer.size;
-      const sx = screenShake.x * (li + 1) * 0.3;
-      const sy = screenShake.y * (li + 1) * 0.3;
-      // Increased base alpha significantly
-      const baseAlpha = [0.18, 0.12, 0.07][li];
-      const alpha = (baseAlpha + depth * 0.04) * S.gridOpacity * 2;
-      ctx.save();
-      ctx.strokeStyle = `hsla(${hue}, 80%, 65%, ${alpha})`;
-      ctx.lineWidth = li === 0 ? 0.8 : 0.5;
-      ctx.beginPath();
-      const cols = Math.ceil(canvas.width / layer.size) + 2;
-      for (let i = -1; i < cols; i++) {
-        const x = i * layer.size + sx;
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-      }
-      const rows = Math.ceil(canvas.height / layer.size) + 2;
-      for (let i = -1; i < rows; i++) {
-        const y = i * layer.size - offset + sy;
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-      }
-      ctx.stroke();
-      ctx.restore();
-    });
-
-    // ── Bottom ground glow ────────────────────────────────────────
-    const groundGrad = ctx.createLinearGradient(0, canvas.height * 0.75, 0, canvas.height);
-    groundGrad.addColorStop(0, 'transparent');
-    groundGrad.addColorStop(1, `hsla(${hue}, 60%, 18%, 0.18)`);
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ── Height-based horizon glow (gets stronger as tower grows) ──
-    if (depth > 0.05) {
-      const a = Math.min(depth * 0.12, 0.18);
-      const horizGrad = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height * 0.15, 0,
-        canvas.width / 2, canvas.height * 0.15, canvas.width * 0.75
-      );
-      horizGrad.addColorStop(0, `hsla(${hue}, 80%, 55%, ${a})`);
-      horizGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = horizGrad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  function recordStreak(n) {
+    currentStreak = n;
+    if (n > bestStreak) {
+      bestStreak = n;
+      localStorage.setItem('sb_best_streak', bestStreak);
+      updateStreakUI(true);
     }
   }
 
-  // ── PARTICLES ────────────────────────────────────────────────────
-  const MAX_PARTICLES = 60;
-
-  function spawnPerfectParticles(cx, cy) {
-    const count = Math.min(16 + comboCount * 3, 28);
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
-      const speed = 2 + Math.random() * 3 + comboCount * 0.4;
-      const h2 = (hue + Math.random() * 50 - 25 + 360) % 360;
-      particles.push({
-        x: cx, y: cy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.2,
-        life: 1, maxLife: 1,
-        r: 2 + Math.random() * 2.5,
-        color: h2,
-        rot: Math.random() * Math.PI * 2,
-        vrot: (Math.random() - 0.5) * 0.2,
-        type: Math.random() < 0.4 ? 1 : 0,
-        gravity: 0.07,
-      });
-    }
-    for (let i = 0; i < 5; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 3.5 + Math.random() * 4;
-      particles.push({
-        x: cx, y: cy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0.55, maxLife: 0.55,
-        r: 0, color: -1,
-        rot: angle, vrot: 0,
-        type: 2,
-        gravity: 0,
-        pvx: Math.cos(angle) * speed, pvy: Math.sin(angle) * speed,
-      });
-    }
-    if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
-  }
-
-  function spawnFallingChunk(x, y, w, colorH, side) {
-    const vx = side === 'left' ? -1.5 - Math.random() * 2 : 1.5 + Math.random() * 2;
-    fallingChunks.push({
-      x, y,
-      w: Math.max(w, 4),
-      vx,
-      vy: -1 - Math.random() * 1.5,
-      vrot: (Math.random() - 0.5) * 0.12,
-      rot: 0,
-      color: colorH,
-      alpha: 1,
-    });
-  }
-
-  function spawnShockwave(cx, cy) {
-    shockwaves.push({ x: cx, y: cy, r: 0, maxR: 90 + comboCount * 20, life: 1, maxLife: 1 });
-  }
-
-  function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.x  += p.vx;
-      p.y  += p.vy;
-      p.vy += p.gravity || 0;
-      p.vx *= 0.96;
-      p.vy *= 0.96;
-      p.rot += p.vrot;
-      p.life -= 0.028;
-      if (p.life <= 0) { particles.splice(i, 1); }
-    }
-  }
-
-  function updateFallingChunks() {
-    const GRAVITY = 0.38;
-    for (let i = fallingChunks.length - 1; i >= 0; i--) {
-      const c = fallingChunks[i];
-      c.vy   += GRAVITY;
-      c.x    += c.vx;
-      c.y    += c.vy;
-      c.rot  += c.vrot;
-      c.alpha -= 0.012;
-      if (c.alpha <= 0 || c.y - cameraY > canvas.height + 60) {
-        fallingChunks.splice(i, 1);
-      }
-    }
-  }
-
-  function updateShockwaves() {
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-      const s = shockwaves[i];
-      s.r    += (s.maxR - s.r) * 0.14;
-      s.life -= 0.04;
-      if (s.life <= 0) shockwaves.splice(i, 1);
-    }
-  }
-
-  function drawParticles() {
-    if (!particles.length) return;
-    const sx = screenShake.x, sy = screenShake.y - cameraY;
-
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      const alpha = Math.max(0, p.life / p.maxLife);
-      const px = p.x + sx, py = p.y + sy;
-
-      if (p.type === 2) {
-        ctx.globalAlpha = alpha * 0.9;
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth   = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px - p.pvx * 2.5, py - p.pvy * 2.5);
-        ctx.stroke();
-      } else {
-        const colorStr = `hsl(${p.color % 360},88%,70%)`;
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle   = colorStr;
-        if (p.type === 1) {
-          ctx.fillRect(px - p.r, py - p.r, p.r * 2, p.r * 2);
-        } else {
-          ctx.beginPath();
-          ctx.arc(px, py, p.r, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function drawFallingChunks() {
-    if (!fallingChunks.length) return;
-    fallingChunks.forEach(c => {
-      const screenY = c.y - cameraY + screenShake.y;
-      const screenX = c.x + screenShake.x;
-      if (screenY > canvas.height + 80) return;
-      ctx.save();
-      ctx.globalAlpha = c.alpha;
-      ctx.translate(screenX + c.w / 2, screenY + BLOCK_H / 2);
-      ctx.rotate(c.rot);
-      ctx.fillStyle = `hsl(${c.color % 360}, 70%, 58%)`;
-      ctx.beginPath();
-      ctx.roundRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H, 3);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H * 0.4);
-      ctx.restore();
-    });
-  }
-
-  function drawShockwaves() {
-    if (!shockwaves.length) return;
-    shockwaves.forEach(s => {
-      const screenY = s.y - cameraY + screenShake.y;
-      const screenX = s.x + screenShake.x;
-      const alpha   = s.life * 0.65;
-      const lw      = Math.max(0.5, s.life * 3.5);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = `hsl(${hue}, 88%, 72%)`;
-      ctx.lineWidth   = lw;
-      ctx.beginPath();
-      ctx.ellipse(screenX, screenY, s.r, s.r * 0.26, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = alpha * 0.35;
-      ctx.lineWidth   = 0.8;
-      ctx.beginPath();
-      ctx.ellipse(screenX, screenY, s.r * 0.55, s.r * 0.15, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    });
+  function setStreakMode(active) {
+    if (streakModeActive === active) return;
+    streakModeActive = active;
+    streakModeBadge.classList.toggle('visible', active);
+    applyMusicStreakMode(active);
   }
 
   // ── AUDIO ENGINE ────────────────────────────────────────────────
   let audioCtx = null;
-
   function getAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
 
-  function playTone({ type='sine', freq=440, freqEnd=null, vol=0.18,
-                      attack=0.005, decay=0.12, t=null }) {
+  function playTone({ type='sine', freq=440, freqEnd=null, vol=0.18, attack=0.005, decay=0.12, t=null }) {
+    if (!S.sfx) return;
     try {
-      const ac  = getAudio();
-      const now = t ?? ac.currentTime;
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.connect(gain);
-      gain.connect(ac.destination);
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, now);
+      const ac = getAudio(), now = t ?? ac.currentTime;
+      const osc = ac.createOscillator(), gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = type; osc.frequency.setValueAtTime(freq, now);
       if (freqEnd !== null) osc.frequency.exponentialRampToValueAtTime(freqEnd, now + decay);
       const v = vol * S.sfxVol;
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(v, now + attack);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
-      osc.start(now);
-      osc.stop(now + decay + 0.02);
+      osc.start(now); osc.stop(now + decay + 0.02);
     } catch(e) {}
   }
 
-  function playNoise({ vol=0.12, decay=0.08, t=null } = {}) {
+  function playNoise({ vol=0.12, decay=0.08, t=null, hipass=800 } = {}) {
+    if (!S.sfx) return;
     try {
-      const ac   = getAudio();
-      const now  = t ?? ac.currentTime;
-      const buf  = ac.createBuffer(1, ac.sampleRate * decay, ac.sampleRate);
+      const ac = getAudio(), now = t ?? ac.currentTime;
+      const buf = ac.createBuffer(1, ac.sampleRate * decay, ac.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-      const src  = ac.createBufferSource();
-      src.buffer = buf;
-      const gain = ac.createGain();
-      const filt = ac.createBiquadFilter();
-      filt.type      = 'bandpass';
-      filt.frequency.value = 800;
-      filt.Q.value   = 0.8;
-      src.connect(filt);
-      filt.connect(gain);
-      gain.connect(ac.destination);
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const gain = ac.createGain(), filt = ac.createBiquadFilter();
+      filt.type = 'bandpass'; filt.frequency.value = hipass; filt.Q.value = 0.8;
+      src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
       const v = vol * S.sfxVol;
-      gain.gain.setValueAtTime(v, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
-      src.start(now);
-      src.stop(now + decay + 0.01);
+      gain.gain.setValueAtTime(v, now); gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+      src.start(now); src.stop(now + decay + 0.01);
     } catch(e) {}
   }
 
-  function sfxPlace(blockWidth) {
-    const pitch = 180 + (blockWidth / 260) * 120;
-    playNoise({ vol: 0.10, decay: 0.06 });
-    playTone({ type: 'triangle', freq: pitch, freqEnd: pitch * 0.7,
-               vol: 0.10, attack: 0.003, decay: 0.09 });
+  function playChime({ freq=880, vol=0.18, dur=0.5, t=null, shimmer=false }) {
+    if (!S.sfx) return;
+    try {
+      const ac = getAudio(), now = t ?? ac.currentTime;
+      const v = vol * S.sfxVol;
+      const osc1 = ac.createOscillator(), g1 = ac.createGain();
+      osc1.type = 'sine'; osc1.frequency.value = freq;
+      g1.gain.setValueAtTime(0, now); g1.gain.linearRampToValueAtTime(v, now+0.008);
+      g1.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+      osc1.connect(g1); g1.connect(ac.destination); osc1.start(now); osc1.stop(now+dur+0.05);
+      const osc2 = ac.createOscillator(), g2 = ac.createGain();
+      osc2.type = 'sine'; osc2.frequency.value = freq*2;
+      g2.gain.setValueAtTime(0, now); g2.gain.linearRampToValueAtTime(v*0.35, now+0.006);
+      g2.gain.exponentialRampToValueAtTime(0.0001, now+dur*0.65);
+      osc2.connect(g2); g2.connect(ac.destination); osc2.start(now); osc2.stop(now+dur+0.05);
+      if (shimmer) {
+        const osc3 = ac.createOscillator(), g3 = ac.createGain();
+        osc3.type = 'triangle'; osc3.frequency.value = freq*1.498;
+        g3.gain.setValueAtTime(0, now+0.01); g3.gain.linearRampToValueAtTime(v*0.18, now+0.025);
+        g3.gain.exponentialRampToValueAtTime(0.0001, now+dur*0.8);
+        osc3.connect(g3); g3.connect(ac.destination); osc3.start(now+0.01); osc3.stop(now+dur+0.05);
+      }
+    } catch(e) {}
   }
 
-  function sfxPerfect(combo) {
-    const base  = 520 + combo * 40;
-    const ac    = getAudio();
-    const now   = ac.currentTime;
-    playTone({ type: 'sine', freq: base,        freqEnd: base * 1.05,
-               vol: 0.20, attack: 0.004, decay: 0.22, t: now });
-    playTone({ type: 'sine', freq: base * 1.5,  freqEnd: base * 1.5,
-               vol: 0.10, attack: 0.008, decay: 0.18, t: now });
-    playTone({ type: 'triangle', freq: base * 2, freqEnd: base * 1.8,
-               vol: 0.06, attack: 0.01, decay: 0.14, t: now });
-    playTone({ type: 'sine', freq: base * 4,    freqEnd: base * 3,
-               vol: 0.04, attack: 0.002, decay: 0.10, t: now });
+  function sfxPerfectTier1() { const ac = getAudio(), now = ac.currentTime; playChime({freq:1318.5,vol:0.13,dur:0.55,t:now}); playChime({freq:1046.5,vol:0.07,dur:0.40,t:now+0.015}); }
+  function sfxPerfectTier2() {
+    if (!S.sfx) return;
+    const ac = getAudio(), now = ac.currentTime;
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); osc.frequency.exponentialRampToValueAtTime(1108.7, now+0.12);
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.20*S.sfxVol, now+0.01); g.gain.exponentialRampToValueAtTime(0.0001, now+0.85);
+    osc.connect(g); g.connect(ac.destination); osc.start(now); osc.stop(now+0.9);
+    playChime({freq:1318.5,vol:0.12,dur:0.70,t:now+0.04,shimmer:true});
+    playChime({freq:659.3,vol:0.08,dur:0.50,t:now+0.06});
   }
-
-  function sfxChunk() {
-    playTone({ type: 'sawtooth', freq: 260, freqEnd: 80,
-               vol: 0.08, attack: 0.003, decay: 0.14 });
-    playNoise({ vol: 0.06, decay: 0.05 });
+  function sfxPerfectTier3(streak) {
+    if (!S.sfx) return;
+    const ac = getAudio(), now = ac.currentTime;
+    const extra = Math.min(streak-3, 5) * 0.015;
+    playChime({freq:783.99,vol:0.20+extra,dur:1.0,t:now,shimmer:true});
+    playChime({freq:987.77,vol:0.14+extra,dur:0.85,t:now+0.02,shimmer:true});
+    playChime({freq:1174.7,vol:0.10+extra,dur:0.75,t:now+0.04,shimmer:true});
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(2637, now+0.06); osc.frequency.exponentialRampToValueAtTime(2093, now+0.25);
+    g.gain.setValueAtTime(0, now+0.06); g.gain.linearRampToValueAtTime(0.08*S.sfxVol, now+0.07); g.gain.exponentialRampToValueAtTime(0.0001, now+0.30);
+    osc.connect(g); g.connect(ac.destination); osc.start(now+0.06); osc.stop(now+0.35);
+    playChime({freq:392,vol:0.12,dur:0.90,t:now+0.01});
   }
-
-  function sfxSpeedUp() {
-    const ac  = getAudio();
-    const now = ac.currentTime;
-    [0, 0.06, 0.12].forEach((dt, i) => {
-      playTone({ type: 'square', freq: 320 + i * 120, freqEnd: 360 + i * 120,
-                 vol: 0.07, attack: 0.005, decay: 0.08, t: now + dt });
-    });
+  function sfxPerfect(streak) {
+    if (streak <= 1) sfxPerfectTier1();
+    else if (streak === 2) sfxPerfectTier2();
+    else sfxPerfectTier3(streak);
   }
+  function sfxPlace(w) { const p = 180 + (w/260)*120; playNoise({vol:0.10,decay:0.06}); playTone({type:'triangle',freq:p,freqEnd:p*0.7,vol:0.10,attack:0.003,decay:0.09}); }
+  function sfxChunk() { playTone({type:'sawtooth',freq:260,freqEnd:80,vol:0.08,attack:0.003,decay:0.14}); playNoise({vol:0.06,decay:0.05}); }
+  function sfxSpeedUp() { const ac = getAudio(), now = ac.currentTime; [0,0.06,0.12].forEach((dt,i) => { playTone({type:'square',freq:320+i*120,freqEnd:360+i*120,vol:0.07,attack:0.005,decay:0.08,t:now+dt}); }); }
+  function sfxGameOver() { const ac = getAudio(), now = ac.currentTime; playNoise({vol:0.18,decay:0.25,t:now}); [0,0.08,0.18,0.30].forEach((dt,i) => { playTone({type:'sawtooth',freq:400-i*70,freqEnd:200-i*30,vol:0.14-i*0.02,attack:0.005,decay:0.18,t:now+dt}); }); }
 
-  function sfxGameOver() {
-    const ac  = getAudio();
-    const now = ac.currentTime;
-    playNoise({ vol: 0.18, decay: 0.25, t: now });
-    [0, 0.08, 0.18, 0.30].forEach((dt, i) => {
-      playTone({ type: 'sawtooth', freq: 400 - i * 70, freqEnd: 200 - i * 30,
-                 vol: 0.14 - i * 0.02, attack: 0.005, decay: 0.18, t: now + dt });
-    });
-  }
+  // ── MUSIC ENGINE ────────────────────────────────────────────────
+  let musicRunning = false, musicStep = 0, nextStepTime = 0;
+  let scheduleAhead = 0.12, scheduleTimer = null;
+  let masterGain = null, drumBus = null, melodBus = null, leadBus = null, streakFilter = null;
+  let sectionStep = 0, sectionIdx = 0;
+  const SECTIONS = ['groove','melodic','buildup','drop'];
+  const NORMAL_DRUM_CUTOFF = 18000, STREAK_DRUM_CUTOFF = 500;
+  const NORMAL_MELOD_GAIN = 0.60, STREAK_MELOD_GAIN = 0.85;
+  const NORMAL_MASTER_GAIN = 0.70, STREAK_MASTER_GAIN = 0.55;
 
-  // ── MÜZİK MOTORU ────────────────────────────────────────────────
-  let musicRunning  = false;
-  let musicStep     = 0;
-  let nextStepTime  = 0;
-  let scheduleAhead = 0.10;
-  let scheduleTimer = null;
-  let masterGain    = null;
+  function getBPM() { return Math.min(95 + score*0.65, 135); }
+  function stepSec() { return 60/getBPM()/4; }
 
-  function getBPM() { return Math.min(70 + score * 0.8, 110); }
-  function stepSec() { return 60 / getBPM() / 4; }
+  const N = {
+    A2:110,C3:130.8,D3:146.8,E3:164.8,G3:196,
+    A3:220,C4:261.6,D4:293.7,E4:329.6,G4:392,
+    A4:440,C5:523.2,D5:587.3,E5:659.2,G5:784,A5:880,
+  };
 
-  function getMaster() {
-    if (masterGain) return masterGain;
+  function buildMusicGraph() {
+    if (masterGain) return;
     const ac = getAudio();
-    masterGain = ac.createGain();
-    masterGain.gain.value = 0;
-    masterGain.connect(ac.destination);
-    return masterGain;
+    masterGain = ac.createGain(); masterGain.gain.value = 0; masterGain.connect(ac.destination);
+    streakFilter = ac.createBiquadFilter();
+    streakFilter.type = 'lowpass'; streakFilter.frequency.value = NORMAL_DRUM_CUTOFF; streakFilter.Q.value = 0.5;
+    streakFilter.connect(masterGain);
+    drumBus  = ac.createGain(); drumBus.gain.value = 1.0;              drumBus.connect(streakFilter);
+    melodBus = ac.createGain(); melodBus.gain.value = NORMAL_MELOD_GAIN; melodBus.connect(masterGain);
+    leadBus  = ac.createGain(); leadBus.gain.value = 0;                leadBus.connect(masterGain);
   }
 
-  function beatKick(t) {
+  function applyMusicStreakMode(active) {
+    if (!audioCtx || !streakFilter) return;
+    const ac = audioCtx, now = ac.currentTime, ramp = 0.45;
+    const tCutoff = active ? STREAK_DRUM_CUTOFF : NORMAL_DRUM_CUTOFF;
+    const tMelod  = active ? STREAK_MELOD_GAIN  : NORMAL_MELOD_GAIN;
+    const tMaster = active ? STREAK_MASTER_GAIN : NORMAL_MASTER_GAIN;
+    streakFilter.frequency.cancelScheduledValues(now);
+    streakFilter.frequency.setValueAtTime(streakFilter.frequency.value, now);
+    streakFilter.frequency.exponentialRampToValueAtTime(tCutoff, now+ramp);
+    melodBus.gain.cancelScheduledValues(now);
+    melodBus.gain.setValueAtTime(melodBus.gain.value, now);
+    melodBus.gain.linearRampToValueAtTime(tMelod, now+ramp);
+    masterGain.gain.cancelScheduledValues(now);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+    masterGain.gain.linearRampToValueAtTime(tMaster * S.musicVol, now+ramp);
+  }
+
+  function drumKick(t, vol=0.95) {
     try {
-      const ac = getAudio();
-      const mg = getMaster();
-      const osc = ac.createOscillator();
-      const g   = ac.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(160, t);
-      osc.frequency.exponentialRampToValueAtTime(40, t + 0.25);
-      g.gain.setValueAtTime(0.9, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-      osc.connect(g); g.connect(mg);
-      osc.start(t); osc.stop(t + 0.30);
-      const n   = ac.createOscillator();
-      const ng  = ac.createGain();
-      n.type = 'square'; n.frequency.value = 80;
-      ng.gain.setValueAtTime(0.3, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
-      n.connect(ng); ng.connect(mg);
-      n.start(t); n.stop(t + 0.02);
+      const ac = getAudio(), db = drumBus;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(38, t+0.22);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.30);
+      o.connect(g); g.connect(db); o.start(t); o.stop(t+0.32);
+      const o2 = ac.createOscillator(), g2 = ac.createGain();
+      o2.type = 'triangle'; o2.frequency.value = 120;
+      g2.gain.setValueAtTime(vol*0.4, t); g2.gain.exponentialRampToValueAtTime(0.001, t+0.025);
+      o2.connect(g2); g2.connect(db); o2.start(t); o2.stop(t+0.03);
     } catch(e) {}
   }
-
-  function beatSnare(t) {
+  function drumSnare(t, vol=0.55) {
     try {
-      const ac = getAudio();
-      const mg = getMaster();
-      const osc = ac.createOscillator();
-      const og  = ac.createGain();
-      osc.type = 'triangle'; osc.frequency.value = 200;
-      og.gain.setValueAtTime(0.4, t);
-      og.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-      osc.connect(og); og.connect(mg);
-      osc.start(t); osc.stop(t + 0.15);
-      const bufLen = Math.floor(ac.sampleRate * 0.18);
-      const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-      const src = ac.createBufferSource();
-      src.buffer = buf;
-      const filt = ac.createBiquadFilter();
-      filt.type = 'highpass'; filt.frequency.value = 1200;
+      const ac = getAudio(), db = drumBus;
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = 220;
+      og.gain.setValueAtTime(vol*0.7, t); og.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+      o.connect(og); og.connect(db); o.start(t); o.stop(t+0.13);
+      const bLen = Math.floor(ac.sampleRate * 0.20);
+      const buf = ac.createBuffer(1, bLen, ac.sampleRate), data = buf.getChannelData(0);
+      for (let i = 0; i < bLen; i++) data[i] = Math.random()*2-1;
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const filt = ac.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 2500; filt.Q.value = 0.6;
       const ng = ac.createGain();
-      ng.gain.setValueAtTime(0.5, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-      src.connect(filt); filt.connect(ng); ng.connect(mg);
-      src.start(t); src.stop(t + 0.19);
+      ng.gain.setValueAtTime(vol*0.85, t); ng.gain.exponentialRampToValueAtTime(0.001, t+0.20);
+      src.connect(filt); filt.connect(ng); ng.connect(db); src.start(t); src.stop(t+0.21);
     } catch(e) {}
   }
-
-  function beatHiHat(t, open = false) {
+  function drumRim(t) {
     try {
-      const ac   = getAudio();
-      const mg   = getMaster();
-      const dur  = open ? 0.14 : 0.045;
-      const bufLen = Math.floor(ac.sampleRate * dur);
-      const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-      const src  = ac.createBufferSource();
-      src.buffer = buf;
-      const filt = ac.createBiquadFilter();
-      filt.type = 'highpass'; filt.frequency.value = open ? 6000 : 8000;
+      const ac = getAudio(), db = drumBus;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = 900;
+      g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.04);
+      o.connect(g); g.connect(db); o.start(t); o.stop(t+0.05);
+    } catch(e) {}
+  }
+  function drumHat(t, open=false, vol=0.14) {
+    try {
+      const ac = getAudio(), db = drumBus;
+      const dur = open ? 0.18 : 0.042;
+      const bLen = Math.floor(ac.sampleRate * dur);
+      const buf = ac.createBuffer(1, bLen, ac.sampleRate), data = buf.getChannelData(0);
+      for (let i = 0; i < bLen; i++) data[i] = Math.random()*2-1;
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const filt = ac.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = open ? 7000 : 9500;
       const g = ac.createGain();
-      g.gain.setValueAtTime(open ? 0.20 : 0.12, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      src.connect(filt); filt.connect(g); g.connect(mg);
-      src.start(t); src.stop(t + dur + 0.01);
+      g.gain.setValueAtTime(vol*(open?1.4:1), t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+      src.connect(filt); filt.connect(g); g.connect(db); src.start(t); src.stop(t+dur+0.01);
+    } catch(e) {}
+  }
+  function drumClap(t) {
+    try {
+      const ac = getAudio(), db = drumBus;
+      [0,0.008,0.016].forEach(dt => {
+        const bLen = Math.floor(ac.sampleRate * 0.14);
+        const buf = ac.createBuffer(1, bLen, ac.sampleRate), data = buf.getChannelData(0);
+        for (let i = 0; i < bLen; i++) data[i] = Math.random()*2-1;
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const filt = ac.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 1800; filt.Q.value = 0.5;
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.5, t+dt); g.gain.exponentialRampToValueAtTime(0.001, t+dt+0.14);
+        src.connect(filt); filt.connect(g); g.connect(db); src.start(t+dt); src.stop(t+dt+0.15);
+      });
     } catch(e) {}
   }
 
-  const BASS_NOTES = [55, 55, 73.4, 55, 65.4, 55, 49, 55];
-  function beatBass(t, step) {
+  function mBass(t, freq, dur=0.18, vol=0.55) {
     try {
-      const ac   = getAudio();
-      const mg   = getMaster();
-      const freq = BASS_NOTES[step % BASS_NOTES.length];
-      const osc  = ac.createOscillator();
-      const filt = ac.createBiquadFilter();
-      const g    = ac.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.value = freq;
+      const ac = getAudio(), mb = melodBus;
+      const o = ac.createOscillator(), filt = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.value = freq;
       filt.type = 'lowpass';
-      filt.frequency.setValueAtTime(600, t);
-      filt.frequency.exponentialRampToValueAtTime(200, t + 0.18);
-      filt.Q.value = 4;
-      g.gain.setValueAtTime(0.38, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-      osc.connect(filt); filt.connect(g); g.connect(mg);
-      osc.start(t); osc.stop(t + 0.24);
+      filt.frequency.setValueAtTime(1200, t); filt.frequency.exponentialRampToValueAtTime(200, t+dur*0.6);
+      filt.Q.value = 5;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+      o.connect(filt); filt.connect(g); g.connect(mb); o.start(t); o.stop(t+dur+0.01);
     } catch(e) {}
   }
-
-  const ARP_SCALE = [329.6, 369.9, 392, 440, 493.8, 523.2, 587.3, 659.2];
-  const ARP_PATTERN = [0,null,2,null,4,2,null,5,null,3,null,6,4,null,2,null];
-  function beatArp(t, step) {
-    const idx = ARP_PATTERN[step % 16];
-    if (idx === null) return;
+  function mPad(t, freq, dur=0.38, vol=0.08) {
     try {
-      const ac   = getAudio();
-      const mg   = getMaster();
-      const freq = ARP_SCALE[idx % ARP_SCALE.length];
-      const osc  = ac.createOscillator();
-      const g    = ac.createGain();
-      osc.type = 'square';
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.07, t + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-      osc.connect(g); g.connect(mg);
-      osc.start(t); osc.stop(t + 0.10);
+      const ac = getAudio(), mb = melodBus;
+      [1, 1.498, 1.782].forEach((ratio, i) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine'; o.frequency.value = freq * ratio;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol*(1-i*0.25), t+0.03);
+        g.gain.setValueAtTime(vol*(1-i*0.25), t+dur-0.05); g.gain.linearRampToValueAtTime(0, t+dur);
+        o.connect(g); g.connect(mb); o.start(t); o.stop(t+dur+0.02);
+      });
+    } catch(e) {}
+  }
+  function mArp(t, freq, vol=0.10) {
+    try {
+      const ac = getAudio(), mb = melodBus;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t+0.11);
+      o.connect(g); g.connect(mb); o.start(t); o.stop(t+0.12);
+    } catch(e) {}
+  }
+  function mLead(t, freq, dur=0.20, vol=0.18) {
+    try {
+      const ac = getAudio(), lb = leadBus;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(freq, t);
+      const lfo = ac.createOscillator(), lfog = ac.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 5.5;
+      lfog.gain.value = freq * 0.012;
+      lfo.connect(lfog); lfog.connect(o.frequency); lfo.start(t); lfo.stop(t+dur+0.02);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+0.012);
+      g.gain.setValueAtTime(vol, t+dur-0.06); g.gain.exponentialRampToValueAtTime(0.001, t+dur+0.02);
+      o.connect(g); g.connect(lb); o.start(t); o.stop(t+dur+0.04);
+    } catch(e) {}
+  }
+  function mSpark(t, freq, vol=0.07) {
+    try {
+      const ac = getAudio(), lb = leadBus;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+0.006);
+      g.gain.exponentialRampToValueAtTime(0.001, t+0.09);
+      o.connect(g); g.connect(lb); o.start(t); o.stop(t+0.10);
     } catch(e) {}
   }
 
-  const PAT_KICK  = [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0];
-  const PAT_SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1];
-  const PAT_HHAT  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
-  const PAT_OPEN  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-  const PAT_BASS  = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0];
+  const GA_KICK  = [1,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0, 1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0];
+  const GA_SNARE = [0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0, 0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0];
+  const GA_HAT   = [1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,1, 1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,1];
+  const GA_OPEN  = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0];
+  const GA_RIM   = [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0];
+  const GA_BASS  = [N.A2,null,null,N.A2,null,null,N.C3,null,null,N.D3,null,null,N.E3,null,null,null, N.A2,null,null,N.G3,null,null,N.E3,null,N.D3,null,null,N.A2,null,null,null,null];
+  const GA_PAD   = [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  const GA_PAD_F = [N.A3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, N.E3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  const HK = [N.A4,N.C5,N.D5,N.E5,N.G5,N.E5,N.D5,N.C5, N.A4,N.C5,N.D5,N.E5,N.A5,N.G5,N.E5,N.D5];
+  const GB_LEAD  = [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0, 1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0];
+  const GB_ARP_F = [N.A4,null,N.E4,null,N.A4,null,N.G4,null,N.D4,null,N.E4,null,N.G4,null,N.A4,null, N.C5,null,N.A4,null,N.G4,null,N.E4,null,N.D4,null,N.C4,null,N.A3,null,N.C4,null];
+  const GC_KICK  = [1,0,0,0,1,0,0,1,1,0,0,0,1,0,1,0, 1,0,0,0,1,0,0,1,1,0,1,0,1,0,1,1];
+  const GC_HAT   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+  const GC_BASS  = [N.A2,null,N.A2,null,N.C3,null,N.C3,null,N.E3,null,N.E3,null,N.G3,null,N.G3,null, N.A3,null,N.A3,null,N.C4,null,N.C4,null,N.E4,null,N.E4,null,N.G4,null,N.G4,null];
+  const GC_ARP_F = [N.A3,N.C4,N.D4,N.E4,N.G4,N.A4,N.C5,N.D5,N.E5,N.G5,N.A5,N.G5,N.E5,N.D5,N.C5,N.A4, N.G4,N.A4,N.C5,N.E5,N.G5,N.A5,N.G5,N.E5,N.D5,N.E5,N.G5,N.A5,N.G5,N.E5,N.D5,N.C5];
+  const GD_KICK  = [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0, 1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1];
+  const GD_CLAP  = [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0];
+  const GD_HAT   = [1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,0, 1,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1];
+  const GD_BASS  = [N.A2,null,N.A2,N.A2,null,N.C3,null,N.D3,N.E3,null,null,N.D3,N.C3,null,N.A2,null, N.G2,null,N.G2,N.G2,null,N.A2,null,N.C3,N.D3,null,N.E3,null,N.A2,null,N.G2,null];
+  const GD_SPARK = [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0, 1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0];
+  const GD_SFRQ  = [N.A5,0,N.C5,0,N.E5,0,N.G5,0,N.A5,0,N.G5,0,N.E5,0,N.C5,0, N.A4,0,N.C5,0,N.E5,0,N.A5,0,N.G5,0,N.E5,0,N.D5,0,N.C5,0,N.A4,0];
 
-  function scheduleStep(t, step) {
-    if (PAT_KICK[step])  beatKick(t);
-    if (PAT_SNARE[step]) beatSnare(t);
-    if (PAT_OPEN[step])  beatHiHat(t, true);
-    else if (PAT_HHAT[step]) beatHiHat(t, false);
-    if (PAT_BASS[step])  beatBass(t, step);
-    beatArp(t, step);
+  function scheduleStep(t, ss, secName) {
+    const s = ss;
+    if (secName === 'groove') {
+      if (GA_KICK[s])  drumKick(t, 0.92);
+      if (GA_SNARE[s]) drumSnare(t, GA_SNARE[s]===1?0.55:0.28);
+      if (GA_RIM[s])   drumRim(t);
+      if (GA_OPEN[s])  drumHat(t, true, 0.18); else if (GA_HAT[s]) drumHat(t, false, 0.13);
+      if (GA_BASS[s])  mBass(t, GA_BASS[s], 0.19);
+      if (GA_PAD[s])   mPad(t, GA_PAD_F[s], 0.38, 0.06);
+    } else if (secName === 'melodic') {
+      if (GA_KICK[s])  drumKick(t, 0.92);
+      if (GA_SNARE[s]) drumSnare(t, 0.55);
+      if (GA_RIM[s])   drumRim(t);
+      if (GA_OPEN[s])  drumHat(t, true, 0.18); else if (GA_HAT[s]) drumHat(t, false, 0.13);
+      if (GA_BASS[s])  mBass(t, GA_BASS[s], 0.19);
+      if (GB_LEAD[s])  { const hi = Math.floor(s/2)%16; mLead(t, HK[hi], 0.18, 0.16); }
+      if (GB_ARP_F[s]) mArp(t, GB_ARP_F[s], 0.09);
+    } else if (secName === 'buildup') {
+      if (GC_KICK[s])  drumKick(t, s>23?1.0:0.85);
+      if (GA_SNARE[s]) drumSnare(t, 0.50);
+      if (GC_HAT[s])   drumHat(t, false, s>16?0.16:0.10);
+      if (GC_BASS[s])  mBass(t, GC_BASS[s], 0.12, 0.45+s*0.004);
+      if (GC_ARP_F[s]) mArp(t, GC_ARP_F[s], 0.10+s*0.002);
+    } else if (secName === 'drop') {
+      if (GD_KICK[s])  drumKick(t, 1.0);
+      if (GD_CLAP[s])  drumClap(t);
+      if (GD_HAT[s])   drumHat(t, false, 0.16);
+      if (s===14||s===30) drumHat(t, true, 0.22);
+      if (GD_BASS[s])  mBass(t, GD_BASS[s], 0.17, 0.65);
+      if (GD_SPARK[s] && GD_SFRQ[s]) mSpark(t, GD_SFRQ[s], 0.09);
+      if (GB_LEAD[s])  { const hi = Math.floor(s/2)%16; mLead(t, HK[hi]*0.5, 0.18, 0.14); }
+    }
   }
 
   function schedulerTick() {
     if (!musicRunning) return;
     const ac = getAudio();
     while (nextStepTime < ac.currentTime + scheduleAhead) {
-      scheduleStep(nextStepTime, musicStep);
-      musicStep = (musicStep + 1) % 16;
+      const secName = SECTIONS[sectionIdx % 4];
+      scheduleStep(nextStepTime, sectionStep, secName);
+      sectionStep++; musicStep++;
+      if (sectionStep >= 32) {
+        sectionStep = 0; sectionIdx++;
+        const nextSec = SECTIONS[sectionIdx % 4];
+        if (leadBus) {
+          const tgt = (nextSec==='groove')?0:(nextSec==='melodic')?0.7:(nextSec==='buildup')?0.5:0.85;
+          leadBus.gain.cancelScheduledValues(nextStepTime);
+          leadBus.gain.linearRampToValueAtTime(tgt, nextStepTime+0.3);
+        }
+      }
       nextStepTime += stepSec();
     }
-    scheduleTimer = setTimeout(schedulerTick, 25);
+    scheduleTimer = setTimeout(schedulerTick, 20);
   }
 
   function musicStart() {
-    if (musicRunning) return;
+    if (musicRunning || !S.music) return;
+    buildMusicGraph();
     const ac = getAudio();
-    musicRunning  = true;
-    musicStep     = 0;
-    nextStepTime  = ac.currentTime + 0.05;
-    const mg = getMaster();
-    mg.gain.cancelScheduledValues(ac.currentTime);
-    mg.gain.setValueAtTime(mg.gain.value, ac.currentTime);
-    mg.gain.linearRampToValueAtTime(0.72 * S.musicVol, ac.currentTime + 0.8);
+    musicRunning = true; musicStep = 0; sectionStep = 0; sectionIdx = 0;
+    nextStepTime = ac.currentTime + 0.05;
+    masterGain.gain.cancelScheduledValues(ac.currentTime);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, ac.currentTime);
+    masterGain.gain.linearRampToValueAtTime(NORMAL_MASTER_GAIN * S.musicVol, ac.currentTime+0.8);
+    streakFilter.frequency.setValueAtTime(NORMAL_DRUM_CUTOFF, ac.currentTime);
+    melodBus.gain.setValueAtTime(NORMAL_MELOD_GAIN, ac.currentTime);
+    leadBus.gain.setValueAtTime(0, ac.currentTime);
     schedulerTick();
   }
 
   function musicStop() {
-    musicRunning = false;
-    clearTimeout(scheduleTimer);
+    musicRunning = false; clearTimeout(scheduleTimer);
     if (!audioCtx || !masterGain) return;
     const ac = audioCtx;
     masterGain.gain.cancelScheduledValues(ac.currentTime);
     masterGain.gain.setValueAtTime(masterGain.gain.value, ac.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
+    masterGain.gain.linearRampToValueAtTime(0, ac.currentTime+0.45);
   }
 
-  // ── SCREEN SHAKE ────────────────────────────────────────────────
-  function triggerShake(magnitude) {
-    screenShake.mag = magnitude;
-  }
-
+  const SHAKE_DECAY = 0.82;
+  function triggerShake(mag) { if (S.shake) screenShake.mag = Math.min(mag, 8); }
   function updateShake() {
-    if (screenShake.mag < 0.1) { screenShake.x = 0; screenShake.y = 0; return; }
-    screenShake.x   = (Math.random() - 0.5) * screenShake.mag;
-    screenShake.y   = (Math.random() - 0.5) * screenShake.mag;
-    screenShake.mag *= screenShake.decay;
+    if (screenShake.mag < 0.15) { screenShake.x = 0; screenShake.y = 0; screenShake.mag = 0; return; }
+    screenShake.x = (Math.random()-0.5) * screenShake.mag;
+    screenShake.y = (Math.random()-0.5) * screenShake.mag;
+    screenShake.mag *= SHAKE_DECAY;
   }
-
-  // ── CAMERA ──────────────────────────────────────────────────────
-  let cameraEaseT    = 0;
-  let cameraEaseFrom = 0;
-  let cameraEaseTo   = 0;
-  let cameraEasing   = false;
 
   function startCameraEase(to) {
-    cameraEaseFrom = cameraY;
-    cameraEaseTo   = to;
-    cameraEaseT    = 0;
-    cameraEasing   = true;
+    cameraEaseFrom = cameraY; cameraEaseTo = to;
+    cameraEaseT = 0; cameraEasing = true;
   }
-
   function updateCamera() {
     if (cameraEasing) {
       cameraEaseT = Math.min(1, cameraEaseT + 0.04);
-      cameraY      = lerp(cameraEaseFrom, cameraEaseTo, easeOutElastic(cameraEaseT));
+      cameraY = lerp(cameraEaseFrom, cameraEaseTo, easeOutElastic(cameraEaseT));
       if (cameraEaseT >= 1) cameraEasing = false;
     } else {
       cameraY += (targetCameraY - cameraY) * CAMERA_EASE;
     }
   }
 
-  // ── BLOCK FACTORY ───────────────────────────────────────────────
+  const _gradCache = new Map();
+  function blockGradient(h, w) {
+    const hk = (h >> 3) << 3;
+    const wk = Math.round(w / 4) * 4;
+    const key = `${hk}_${wk}`;
+    if (_gradCache.has(key)) return _gradCache.get(key);
+    const g = ctx.createLinearGradient(0, 0, 0, BLOCK_H);
+    g.addColorStop(0,   `hsl(${hk%360},72%,68%)`);
+    g.addColorStop(0.4, `hsl(${(hk+15)%360},67%,60%)`);
+    g.addColorStop(1,   `hsl(${(hk+35)%360},65%,48%)`);
+    if (_gradCache.size > 120) _gradCache.clear();
+    _gradCache.set(key, g);
+    return g;
+  }
+
+  function drawBlock(b, alpha=1, isTop=false) {
+    const sY = b.y - cameraY + screenShake.y;
+    const sX = b.x + screenShake.x;
+    if (sY > canvas.height + 60 || sY < -80) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(sX, sY);
+    if (isTop && comboCount >= 3) {
+      ctx.shadowColor = `hsl(${b.color%360},80%,65%)`;
+      ctx.shadowBlur = 6 + comboCount * 2;
+    }
+    ctx.fillStyle = blockGradient(b.color, b.w);
+    ctx.beginPath(); ctx.roundRect(0, 0, b.w, BLOCK_H, 4); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.roundRect(2, 2, b.w-4, BLOCK_H*0.45, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(0.5, 0.5, b.w-1, BLOCK_H-1, 4); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMoving() {
+    if (!moving) return;
+    const sY = moving.y - cameraY + screenShake.y;
+    const sX = moving.x + screenShake.x;
+    ctx.save();
+    ctx.strokeStyle = `hsla(${moving.color},70%,60%,0.10)`;
+    ctx.lineWidth = 1; ctx.setLineDash([4, 7]);
+    ctx.beginPath(); ctx.moveTo(sX, sY+BLOCK_H/2); ctx.lineTo(sX+moving.w, sY+BLOCK_H/2); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+    drawBlock(moving, 0.92, true);
+  }
+
+  function buildStars() {
+    stars = [];
+    const configs = [
+      {count:70, rMin:0.4, rMax:0.9, aMin:0.25, aMax:0.55, speed:0.04},
+      {count:40, rMin:0.7, rMax:1.4, aMin:0.40, aMax:0.75, speed:0.10},
+      {count:20, rMin:1.2, rMax:2.2, aMin:0.55, aMax:1.00, speed:0.20},
+    ];
+    configs.forEach(c => {
+      for (let i = 0; i < c.count; i++) {
+        stars.push({
+          x: Math.random(), y: Math.random() * 4 - 1,
+          r: c.rMin + Math.random() * (c.rMax - c.rMin),
+          a: c.aMin + Math.random() * (c.aMax - c.aMin),
+          speed: c.speed,
+          twinkle: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.02 + Math.random() * 0.04,
+          cross: c.rMin > 1,
+        });
+      }
+    });
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = '#07070d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const w = canvas.width, h = canvas.height;
+    const nCx = w * 0.72, nCy = h * 0.25 + (cameraY * 0.05) % h;
+    const ng = ctx.createRadialGradient(nCx, nCy, 0, nCx, nCy, w * 0.55);
+    ng.addColorStop(0,   `hsla(${hue},65%,28%,0.12)`);
+    ng.addColorStop(0.5, `hsla(${(hue+40)%360},55%,20%,0.06)`);
+    ng.addColorStop(1,   'transparent');
+    ctx.fillStyle = ng; ctx.fillRect(0, 0, w, h);
+    const nCx2 = w*0.20, nCy2 = h*0.68 + (cameraY*0.03)%h;
+    const ng2 = ctx.createRadialGradient(nCx2, nCy2, 0, nCx2, nCy2, w*0.45);
+    ng2.addColorStop(0, `hsla(${(hue+120)%360},55%,22%,0.09)`);
+    ng2.addColorStop(1, 'transparent');
+    ctx.fillStyle = ng2; ctx.fillRect(0, 0, w, h);
+    const tw = performance.now() * 0.001;
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      const tA = s.a * (0.7 + 0.3 * Math.sin(tw * s.twinkleSpeed * 20 + s.twinkle));
+      const sx = s.x * w + screenShake.x * s.speed * 3;
+      const sy = ((s.y * h * 4 - cameraY * s.speed) % (h * 1.5) + h * 1.5) % (h * 1.5) - h * 0.25;
+      if (sy < -10 || sy > h + 10) continue;
+      ctx.globalAlpha = tA;
+      ctx.fillStyle = `hsl(${(hue+180)%360},40%,95%)`;
+      ctx.beginPath(); ctx.arc(sx, sy, s.r, 0, Math.PI*2); ctx.fill();
+      if (s.cross) {
+        ctx.globalAlpha = tA * 0.3;
+        ctx.strokeStyle = `hsl(${(hue+180)%360},60%,90%)`;
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(sx - s.r*2.5, sy); ctx.lineTo(sx + s.r*2.5, sy);
+        ctx.moveTo(sx, sy - s.r*2.5); ctx.lineTo(sx, sy + s.r*2.5);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    const gridAlpha = S.gridOpacity * 0.07;
+    if (gridAlpha > 0.003) {
+      const gSize = 60;
+      const offset = (cameraY * 0.18) % gSize;
+      ctx.save();
+      ctx.strokeStyle = `hsla(${hue},80%,65%,${gridAlpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      for (let i = -1; i < Math.ceil(w/gSize)+2; i++) {
+        ctx.moveTo(i*gSize, 0); ctx.lineTo(i*gSize, h);
+      }
+      for (let i = -1; i < Math.ceil(h/gSize)+2; i++) {
+        ctx.moveTo(0, i*gSize - offset); ctx.lineTo(w, i*gSize - offset);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    const gG = ctx.createLinearGradient(0, h*0.75, 0, h);
+    gG.addColorStop(0, 'transparent');
+    gG.addColorStop(1, `hsla(${hue},60%,18%,0.15)`);
+    ctx.fillStyle = gG; ctx.fillRect(0, 0, w, h);
+  }
+
+  function spawnPerfectParticles(cx, cy) {
+    if (!S.particles) return;
+    const count = Math.min(14 + comboCount*2, 24);
+    for (let i = 0; i < count; i++) {
+      if (particles.length >= MAX_PARTICLES) break;
+      const angle = (Math.PI*2/count)*i + Math.random()*0.4;
+      const speed = 2 + Math.random()*3 + comboCount*0.3;
+      particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed - 1.2,
+        life: 1, maxLife: 1,
+        r: 2 + Math.random()*2.5,
+        color: (hue + Math.random()*50-25+360)%360,
+        type: Math.random()<0.35 ? 1 : 0,
+        gravity: 0.07,
+      });
+    }
+    for (let i = 0; i < 4; i++) {
+      if (particles.length >= MAX_PARTICLES) break;
+      const angle = Math.random()*Math.PI*2;
+      const speed = 3.5 + Math.random()*4;
+      const vx = Math.cos(angle)*speed, vy = Math.sin(angle)*speed;
+      particles.push({ x:cx, y:cy, vx, vy, pvx:vx, pvy:vy, life:0.5, maxLife:0.5, r:0, color:-1, type:2, gravity:0 });
+    }
+  }
+
+  function spawnFallingChunk(x, y, w, colorH, side) {
+    if (fallingChunks.length >= MAX_CHUNKS) return;
+    const vx = side==='left' ? -1.5-Math.random()*2 : 1.5+Math.random()*2;
+    fallingChunks.push({ x, y, w: Math.max(w, 4), vx, vy: -1-Math.random()*1.5, vrot:(Math.random()-0.5)*0.12, rot:0, color:colorH, alpha:1 });
+  }
+
+  function spawnShockwave(cx, cy) {
+    if (shockwaves.length >= MAX_SHOCKWAVES) return;
+    shockwaves.push({ x:cx, y:cy, r:0, maxR:90+comboCount*18, life:1 });
+  }
+
+  function updateParticles() {
+    for (let i = particles.length-1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.gravity || 0;
+      p.vx *= 0.96; p.vy *= 0.96;
+      p.life -= 0.030;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function updateFallingChunks() {
+    for (let i = fallingChunks.length-1; i >= 0; i--) {
+      const c = fallingChunks[i];
+      c.vy += 0.38; c.x += c.vx; c.y += c.vy;
+      c.rot += c.vrot; c.alpha -= 0.013;
+      if (c.alpha <= 0 || c.y - cameraY > canvas.height + 60) fallingChunks.splice(i, 1);
+    }
+  }
+
+  function updateShockwaves() {
+    for (let i = shockwaves.length-1; i >= 0; i--) {
+      const s = shockwaves[i];
+      s.r += (s.maxR - s.r) * 0.14; s.life -= 0.045;
+      if (s.life <= 0) shockwaves.splice(i, 1);
+    }
+  }
+
+  function drawParticles() {
+    if (!particles.length) return;
+    const ox = screenShake.x, oy = screenShake.y - cameraY;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const alpha = Math.max(0, p.life / p.maxLife);
+      const px = p.x + ox, py = p.y + oy;
+      ctx.globalAlpha = alpha;
+      if (p.type === 2) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - p.pvx*2.5, py - p.pvy*2.5); ctx.stroke();
+      } else {
+        ctx.fillStyle = `hsl(${p.color%360},88%,70%)`;
+        if (p.type === 1) { ctx.fillRect(px-p.r, py-p.r, p.r*2, p.r*2); }
+        else { ctx.beginPath(); ctx.arc(px, py, p.r, 0, Math.PI*2); ctx.fill(); }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFallingChunks() {
+    for (let i = 0; i < fallingChunks.length; i++) {
+      const c = fallingChunks[i];
+      const sY = c.y - cameraY + screenShake.y;
+      const sX = c.x + screenShake.x;
+      if (sY > canvas.height + 80) continue;
+      ctx.save();
+      ctx.globalAlpha = c.alpha;
+      ctx.translate(sX + c.w/2, sY + BLOCK_H/2);
+      ctx.rotate(c.rot);
+      ctx.fillStyle = `hsl(${c.color%360},70%,58%)`;
+      ctx.beginPath(); ctx.roundRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.fillRect(-c.w/2, -BLOCK_H/2, c.w, BLOCK_H*0.4);
+      ctx.restore();
+    }
+  }
+
+  function drawShockwaves() {
+    for (let i = 0; i < shockwaves.length; i++) {
+      const s = shockwaves[i];
+      const sY = s.y - cameraY + screenShake.y;
+      const sX = s.x + screenShake.x;
+      const alpha = s.life * 0.6;
+      const lw = Math.max(0.5, s.life * 3);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = `hsl(${hue},88%,72%)`;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.ellipse(sX, sY, s.r, s.r*0.25, 0, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawShadows() {
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      const sY = b.y - cameraY + screenShake.y;
+      if (sY > canvas.height+30 || sY < -60) continue;
+      ctx.ellipse(b.x + screenShake.x + b.w/2, sY + BLOCK_H + 5, b.w*0.42, 4, 0, 0, Math.PI*2);
+    }
+    ctx.fill();
+    ctx.restore();
+  }
+
   function makeBase() {
-    const W  = canvas.width;
-    const bw = Math.min(W * 0.55, 260);
-    const cx = W / 2 - bw / 2;
-    return { x: cx, w: bw, y: 0, color: 160 };
+    const bw = Math.min(canvas.width * 0.55, 260);
+    return { x: canvas.width/2 - bw/2, w: bw, y: 0, color: 160 };
   }
 
   function spawnMoving() {
-    const last  = blocks[blocks.length - 1];
-    const dir   = (Math.random() < 0.5) ? 1 : -1;
+    const last = blocks[blocks.length-1];
+    const dir = (Math.random() < 0.5) ? 1 : -1;
     const startX = dir === 1 ? -last.w - 20 : canvas.width + 20;
     hue = (hue + 18) % 360;
+    _gradCache.clear();
     moving = { x: startX, w: last.w, y: last.y - BLOCK_H, dir, color: hue };
   }
 
-  // ── INIT GAME ───────────────────────────────────────────────────
   function initGame() {
-    blocks         = [];
-    moving         = null;
-    score          = 0;
-    hue            = 160;
-    particles      = [];
-    fallingChunks  = [];
-    shockwaves     = [];
-    comboCount     = 0;
-    screenShake.mag = 0;
-
+    blocks = []; moving = null; score = 0; hue = 160;
+    particles = []; fallingChunks = []; shockwaves = [];
+    comboCount = 0; currentStreak = 0; screenShake.mag = 0;
+    streakModeActive = false; streakModeBadge.classList.remove('visible');
+    _gradCache.clear();
     const base = makeBase();
-    for (let i = 0; i < GROUND_BLOCKS; i++) {
-      blocks.push({ x: base.x, w: base.w, y: -i * BLOCK_H, color: hue + i * 15 });
-    }
-
-    const topBlock    = blocks[blocks.length - 1];
-    targetCameraY     = topBlock.y - canvas.height * 0.7;
-    cameraY           = targetCameraY;
-    cameraEasing      = false;
-
-    scoreEl.textContent = '0';
-    updateComboUI();
-    spawnMoving();
+    for (let i = 0; i < GROUND_BLOCKS; i++) blocks.push({ x:base.x, w:base.w, y:-i*BLOCK_H, color:hue+i*15 });
+    const top = blocks[blocks.length-1];
+    targetCameraY = top.y - canvas.height * 0.7;
+    cameraY = targetCameraY; cameraEasing = false;
+    scoreEl.textContent = '0'; updateComboUI(); spawnMoving();
   }
 
-  // ── COMBO ───────────────────────────────────────────────────────
   function updateComboUI() {
     if (comboCount >= 2) {
       comboCountEl.textContent = `×${comboCount}`;
@@ -1226,79 +1165,56 @@
       scoreEl.classList.remove('combo-glow');
     }
   }
+  function resetCombo() { comboCount = 0; updateComboUI(); }
 
-  function resetCombo() {
-    comboCount = 0;
-    updateComboUI();
-  }
-
-  // ── PLACE BLOCK ─────────────────────────────────────────────────
   function placeBlock() {
     if (!moving || !gameRunning) return;
-    const last = blocks[blocks.length - 1];
-
-    const overlapStart = Math.max(moving.x, last.x);
-    const overlapEnd   = Math.min(moving.x + moving.w, last.x + last.w);
-    const overlap      = overlapEnd - overlapStart;
-
-    if (overlap <= 0) {
-      endGame();
-      return;
-    }
-
+    const last = blocks[blocks.length-1];
+    const oS = Math.max(moving.x, last.x);
+    const oE = Math.min(moving.x + moving.w, last.x + last.w);
+    const overlap = oE - oS;
+    if (overlap <= 0) { endGame(); return; }
     const diff = Math.abs(moving.x - last.x);
     let isPerfect = false;
-
     if (diff <= PERFECT_TOL) {
-      moving.x = last.x;
-      moving.w = last.w;
-      isPerfect = true;
-      comboCount++;
+      moving.x = last.x; moving.w = last.w;
+      isPerfect = true; comboCount++; currentStreak++; recordStreak(currentStreak);
     } else {
-      if (moving.x < last.x) {
-        spawnFallingChunk(moving.x, moving.y, last.x - moving.x, moving.color, 'left');
-        if (S.sfx) sfxChunk();
-      }
-      if (moving.x + moving.w > last.x + last.w) {
-        spawnFallingChunk(last.x + last.w, moving.y, (moving.x + moving.w) - (last.x + last.w), moving.color, 'right');
-        if (S.sfx) sfxChunk();
-      }
-      moving.w = overlap;
-      moving.x = overlapStart;
-      resetCombo();
+      if (moving.x < last.x) { spawnFallingChunk(moving.x, moving.y, last.x-moving.x, moving.color, 'left'); sfxChunk(); }
+      if (moving.x+moving.w > last.x+last.w) { spawnFallingChunk(last.x+last.w, moving.y, (moving.x+moving.w)-(last.x+last.w), moving.color, 'right'); sfxChunk(); }
+      moving.w = overlap; moving.x = oS;
+      resetCombo(); currentStreak = 0;
     }
-
     if (isPerfect) {
-      triggerPerfect();
-      if (S.sfx) sfxPerfect(comboCount);
-      if (S.particles) { spawnPerfectParticles(moving.x + moving.w / 2, moving.y + BLOCK_H / 2); spawnShockwave(moving.x + moving.w / 2, moving.y + BLOCK_H / 2); }
-      if (S.shake) triggerShake(3 + comboCount * 0.8);
+      triggerPerfect(currentStreak);
+      sfxPerfect(currentStreak);
+      if (S.particles) {
+        spawnPerfectParticles(moving.x + moving.w/2, moving.y + BLOCK_H/2);
+        spawnShockwave(moving.x + moving.w/2, moving.y + BLOCK_H/2);
+      }
+      triggerShake(3 + comboCount * 0.7);
+      setStreakMode(currentStreak >= STREAK_THRESH);
     } else {
-      if (S.sfx) sfxPlace(moving.w);
-      if (S.shake) triggerShake(1.5);
+      sfxPlace(moving.w);
+      triggerShake(1.5);
+      setStreakMode(false);
     }
-
-    blocks.push({ x: moving.x, w: moving.w, y: moving.y, color: moving.color });
-    score++;
-    scoreEl.textContent = score;
+    blocks.push({ x:moving.x, w:moving.w, y:moving.y, color:moving.color });
+    score++; scoreEl.textContent = score;
     if (score > best) { best = score; bestEl.textContent = best; }
-
-    if (score % 5 === 0) { showSpeedBadge(); if (S.sfx) sfxSpeedUp(); }
-
+    if (score % 5 === 0) { showSpeedBadge(); sfxSpeedUp(); }
     updateComboUI();
-
-    const newTop = blocks[blocks.length - 1];
+    const newTop = blocks[blocks.length-1];
     targetCameraY = newTop.y - canvas.height * 0.68;
     startCameraEase(targetCameraY);
-
     spawnMoving();
   }
 
-  // ── PERFECT FLASH ───────────────────────────────────────────────
-  function triggerPerfect() {
-    perfectEl.classList.remove('pop');
+  function triggerPerfect(streak) {
+    perfectEl.classList.remove('pop', 'tier3');
     void perfectEl.offsetWidth;
     perfectEl.classList.add('pop');
+    if (streak >= 3) perfectEl.classList.add('tier3');
   }
 
   function showSpeedBadge() {
@@ -1307,11 +1223,10 @@
     speedBadgeTimer = setTimeout(() => speedBadge.classList.remove('show'), 1800);
   }
 
-  // ── END GAME ────────────────────────────────────────────────────
   function endGame() {
     gameRunning = false;
-    musicStop();
-    if (S.sfx) sfxGameOver();
+    setStreakMode(false);
+    musicStop(); sfxGameOver();
     isFirstGame = false;
     menuSub.innerHTML = `SCORE &nbsp;<strong style="color:var(--accent)">${score}</strong>&nbsp;&nbsp;·&nbsp;&nbsp;BEST &nbsp;<strong style="color:var(--accent)">${best}</strong>`;
     startBtn.textContent = '▶  TRY AGAIN';
@@ -1319,92 +1234,49 @@
     menuScreen.classList.remove('hidden');
   }
 
-  // ── BLOCK SHADOW ────────────────────────────────────────────────
-  function drawShadows() {
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    blocks.forEach(b => {
-      const screenY = b.y - cameraY + screenShake.y;
-      if (screenY > canvas.height + 30 || screenY < -60) return;
-      ctx.ellipse(b.x + screenShake.x + b.w / 2, screenY + BLOCK_H + 5, b.w * 0.42, 4, 0, 0, Math.PI * 2);
-    });
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // ── GAME LOOP ────────────────────────────────────────────────────
   function loop() {
     drawBackground();
-
-    updateCamera();
-    updateShake();
-    updateParticles();
-    updateFallingChunks();
-    updateShockwaves();
-
+    updateCamera(); updateShake();
+    updateParticles(); updateFallingChunks(); updateShockwaves();
     if (moving && gameRunning) {
       const speed = getSpeed();
       moving.x += moving.dir * speed;
-      if (moving.x > canvas.width + 10) moving.dir = -1;
-      if (moving.x + moving.w < -10)    moving.dir =  1;
+      if (moving.x > canvas.width + 10)    moving.dir = -1;
+      if (moving.x + moving.w < -10)       moving.dir = 1;
     }
-
-    blocks.forEach((b, i) => {
-      const isTop = i === blocks.length - 1;
-      drawBlock(b, 1, isTop);
-    });
+    for (let i = 0; i < blocks.length; i++) drawBlock(blocks[i], 1, i === blocks.length-1);
     drawShadows();
-
     drawShockwaves();
     drawFallingChunks();
     drawParticles();
-
     drawMoving();
-
     animId = requestAnimationFrame(loop);
   }
 
-  // ── INPUT ────────────────────────────────────────────────────────
-  // DÜZELTİLDİ: Tek bir handleAction tanımı, tek bir event listener seti
-  function handleAction() {
-    if (gameRunning) placeBlock();
-  }
+  function handleAction() { if (gameRunning) placeBlock(); }
 
   window.addEventListener('keydown', e => {
     if (e.code === 'Space') {
       e.preventDefault();
-      if (!gameRunning && !settingsPanel.classList.contains('open')) {
-        startGame();
-      } else {
-        handleAction();
-      }
+      if (!gameRunning && !settingsPanel.classList.contains('open')) startGame();
+      else handleAction();
     }
     if (e.code === 'Escape') closeSettings();
   });
 
-  canvas.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    handleAction();
-  });
+  canvas.addEventListener('pointerdown', e => { e.preventDefault(); handleAction(); }, { passive: false });
 
-  // ── START / RESTART ─────────────────────────────────────────────
   function startGame() {
     menuScreen.classList.add('hidden');
     settingsPanel.classList.remove('open');
-    initGame();
-    gameRunning = true;
-    musicStop();
-    if (S.music) musicStart();
+    initGame(); gameRunning = true;
+    musicStop(); musicStart();
     if (animId) cancelAnimationFrame(animId);
     loop();
   }
 
-  // ── SETTINGS PANEL LOGIC ────────────────────────────────────────
-  function openSettings() { settingsPanel.classList.add('open'); }
+  function openSettings()  { settingsPanel.classList.add('open'); }
   function closeSettings() { settingsPanel.classList.remove('open'); }
-
   settingsBtn.addEventListener('click', openSettings);
   menuSettBtn.addEventListener('click', openSettings);
   settingsClose.addEventListener('click', closeSettings);
@@ -1413,51 +1285,97 @@
 
   document.querySelectorAll('.toggle').forEach(tog => {
     tog.addEventListener('click', () => {
-      const key = tog.dataset.key;
-      S[key] = !S[key];
-      tog.classList.toggle('on', S[key]);
-      if (key === 'music') {
-        if (S.music && gameRunning) musicStart();
-        else if (!S.music) musicStop();
-      }
+      const key = tog.dataset.key; S[key] = !S[key]; tog.classList.toggle('on', S[key]);
+      if (key === 'music') { if (S.music && gameRunning) musicStart(); else if (!S.music) musicStop(); }
       if (key === 'shake' && !S.shake) { screenShake.x = 0; screenShake.y = 0; screenShake.mag = 0; }
     });
   });
 
   function bindSlider(id, valId, cb) {
-    const sl = document.getElementById(id);
-    const vl = document.getElementById(valId);
-    sl.addEventListener('input', () => {
-      vl.textContent = sl.value;
-      cb(parseFloat(sl.value) / 100);
-    });
+    const sl = document.getElementById(id), vl = document.getElementById(valId);
+    sl.addEventListener('input', () => { vl.textContent = sl.value; cb(parseFloat(sl.value)/100); });
   }
   bindSlider('sl-music-vol', 'sl-music-vol-val', v => {
     S.musicVol = v;
     if (masterGain && audioCtx) {
-      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-      masterGain.gain.setValueAtTime(S.music ? v * 0.72 : 0, audioCtx.currentTime);
+      const now = audioCtx.currentTime;
+      const target = streakModeActive ? STREAK_MASTER_GAIN : NORMAL_MASTER_GAIN;
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(S.music ? target*v : 0, now);
     }
   });
-  bindSlider('sl-sfx-vol',   'sl-sfx-vol-val',   v => { S.sfxVol = v; });
-  bindSlider('sl-grid',      'sl-grid-val',       v => { S.gridOpacity = v; });
+  bindSlider('sl-sfx-vol', 'sl-sfx-vol-val', v => { S.sfxVol = v; });
+  bindSlider('sl-grid', 'sl-grid-val', v => { S.gridOpacity = v; });
 
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.addEventListener('click', () => {
-      const t = sw.dataset.theme;
-      S.theme = t;
-      document.body.setAttribute('data-theme', t);
+      S.theme = sw.dataset.theme;
+      document.body.setAttribute('data-theme', S.theme);
       _gradCache.clear();
       document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
     });
   });
 
-  // ── MENU SCREEN SETUP ───────────────────────────────────────────
   startBtn.addEventListener('click', startGame);
-
   menuBestRow.style.display = best > 0 ? 'block' : 'none';
-  menuBestVal.textContent   = best;
+  menuBestVal.textContent = best;
+
+  // ── PWA INSTALL LOGIC ────────────────────────────────────────────
+  const pwaInstallRow = document.getElementById('pwa-install-row');
+  const pwaSection    = document.getElementById('pwa-section');
+  const pwaDivider    = document.getElementById('pwa-divider');
+  const iosModal      = document.getElementById('pwa-ios-modal');
+  const iosClose      = document.getElementById('pwa-modal-close');
+
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  function showPWARow() {
+    pwaInstallRow.style.display = 'flex';
+    pwaSection.style.display    = 'block';
+    pwaDivider.style.display    = 'block';
+  }
+  function hidePWARow() {
+    pwaInstallRow.style.display = 'none';
+    pwaSection.style.display    = 'none';
+    pwaDivider.style.display    = 'none';
+  }
+
+  // iOS modal
+  iosClose.addEventListener('click', () => iosModal.classList.remove('open'));
+  iosModal.addEventListener('click', e => { if (e.target === iosModal) iosModal.classList.remove('open'); });
+
+  // Native prompt (Android / Chrome / Edge)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showPWARow();
+  });
+  window.addEventListener('appinstalled', () => {
+    hidePWARow();
+    deferredPrompt = null;
+  });
+
+  // Tıklama
+  pwaInstallRow.addEventListener('click', async () => {
+    if (isIOS()) { iosModal.classList.add('open'); return; }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') hidePWARow();
+      deferredPrompt = null;
+    }
+  });
+
+  // Başlangıç kontrolü
+  if (isStandalone()) {
+    hidePWARow(); // Zaten yüklü
+  } else if (isIOS()) {
+    showPWARow(); // iOS'ta event gelmez, manuel göster
+  }
+  // ── PWA INSTALL LOGIC SONU ───────────────────────────────────────
 
   loop();
 })();
