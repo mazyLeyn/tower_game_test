@@ -1,5 +1,5 @@
 {
-  "name": "Skyscraper Stack Game",
+  "name": "Skyscraper:To Space",
   "short_name": "Skyscraper",
   "description": "En yüksek kuleyi inşa et!",
   "start_url": "/",
